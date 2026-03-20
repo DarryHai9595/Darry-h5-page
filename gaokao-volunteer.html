@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高考志愿模拟填报系统 2026</title>
+<style>
+:root {
+  --primary: #1a73e8;
+  --primary-light: #e8f0fe;
+  --success: #0d9488;
+  --success-light: #ccfbf1;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --purple: #7c3aed;
+  --purple-light: #ede9fe;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #1a73e8 0%, #7c3aed 100%); color: #fff; padding: 32px 0; text-align: center; position: relative; overflow: hidden; }
+.header::before { content: ''; position: absolute; top: -50%; right: -20%; width: 400px; height: 400px; border-radius: 50%; background: rgba(255,255,255,.08); }
+.header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.header p { opacity: .85; font-size: 15px; }
+.header .badge { display: inline-block; background: rgba(255,255,255,.2); padding: 3px 12px; border-radius: 20px; font-size: 12px; margin-top: 8px; backdrop-filter: blur(4px); }
+
+/* Layout */
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+/* Steps */
+.steps { display: flex; gap: 8px; margin-bottom: 28px; background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.step-item { flex: 1; text-align: center; position: relative; cursor: pointer; padding: 8px 4px; border-radius: 8px; transition: .2s; }
+.step-item.active { background: var(--primary-light); }
+.step-item.completed { background: var(--success-light); }
+.step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--border); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.step-item.active .step-num { background: var(--primary); color: #fff; }
+.step-item.completed .step-num { background: var(--success); color: #fff; }
+.step-label { font-size: 12px; color: var(--text-secondary); }
+.step-item.active .step-label { color: var(--primary); font-weight: 600; }
+
+/* Cards */
+.card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.card-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.card-title .icon { font-size: 20px; }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+.form-hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+select, input[type="number"], input[type="text"] {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 14px; background: #fff; transition: .2s; color: var(--text);
+}
+select:focus, input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
+
+/* Tags / Chips */
+.chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 13px; cursor: pointer; transition: .2s; user-select: none; }
+.chip:hover { border-color: var(--primary); background: var(--primary-light); }
+.chip.selected { border-color: var(--primary); background: var(--primary); color: #fff; }
+.chip.disabled { opacity: .4; cursor: not-allowed; }
+
+/* Radio cards */
+.radio-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.radio-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: .2s; }
+.radio-card:hover { border-color: var(--primary); }
+.radio-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.radio-card h4 { font-size: 15px; margin-bottom: 4px; }
+.radio-card p { font-size: 12px; color: var(--text-secondary); }
+
+/* Buttons */
+.btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #1557b0; }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-block { width: 100%; justify-content: center; }
+.btn-group { display: flex; gap: 10px; margin-top: 20px; }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+/* Tags risk levels */
+.tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.tag-chong { background: var(--danger-light); color: var(--danger); }
+.tag-wen { background: var(--warning-light); color: #b45309; }
+.tag-bao { background: var(--success-light); color: var(--success); }
+
+/* Wish list */
+.wish-list { border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.wish-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; transition: .15s; }
+.wish-item:last-child { border-bottom: none; }
+.wish-item:hover { background: #f8fafc; }
+.wish-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.wish-info { flex: 1; min-width: 0; }
+.wish-uni { font-weight: 600; font-size: 14px; }
+.wish-majors { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wish-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.wish-actions button { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; opacity: .5; transition: .15s; }
+.wish-actions button:hover { opacity: 1; }
+.wish-empty { padding: 40px; text-align: center; color: var(--text-secondary); }
+
+/* Analysis panel */
+.analysis-box { background: linear-gradient(135deg, #f0f9ff, #ede9fe); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.analysis-title { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+.stat-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px dashed rgba(0,0,0,.08); }
+.stat-row:last-child { border-bottom: none; }
+.stat-value { font-weight: 600; }
+
+/* Bar chart */
+.bar-chart { margin: 16px 0; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { width: 60px; font-size: 13px; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; height: 24px; background: #f1f5f9; border-radius: 12px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 12px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: #fff; font-weight: 600; transition: width .6s ease; }
+.bar-chong { background: linear-gradient(90deg, #ef4444, #f87171); }
+.bar-wen { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.bar-bao { background: linear-gradient(90deg, #0d9488, #2dd4bf); }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: var(--radius); width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 18px; }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+.close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; }
+
+/* Major selector */
+.major-check { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+.major-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* Policy banner */
+.policy-banner { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1.5px solid #fbbf24; border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start; }
+.policy-banner .icon { font-size: 24px; flex-shrink: 0; }
+.policy-banner h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.policy-banner p { font-size: 13px; color: #92400e; line-height: 1.6; }
+
+/* Table */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.data-table tr:hover td { background: #f8fafc; }
+
+/* Tooltip */
+.tooltip { position: relative; cursor: help; }
+.tooltip::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: .2s; }
+.tooltip:hover::after { opacity: 1; }
+
+/* Section toggle */
+.section-panel { display: none; }
+.section-panel.active { display: block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .steps { flex-wrap: wrap; }
+  .step-item { flex: none; width: 48%; }
+  .header h1 { font-size: 22px; }
+}
+
+/* Print */
+.print-section { display: none; }
+@media print {
+  .no-print { display: none !important; }
+  .print-section { display: block !important; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}
+
+/* Score input with slider */
+.score-slider { display: flex; align-items: center; gap: 12px; }
+.score-slider input[type="range"] { flex: 1; accent-color: var(--primary); height: 6px; }
+.score-display { font-size: 32px; font-weight: 700; color: var(--primary); min-width: 80px; text-align: center; }
+
+/* Collapsible */
+.collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.collapsible-header .arrow { transition: .2s; }
+.collapsible-header.open .arrow { transform: rotate(180deg); }
+.collapsible-body { padding: 12px 0; display: none; }
+.collapsible-body.open { display: block; }
+
+/* University search */
+.uni-search { position: relative; }
+.uni-search-results { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; max-height: 240px; overflow-y: auto; z-index: 10; display: none; box-shadow: var(--shadow-lg); }
+.uni-search-results.show { display: block; }
+.uni-search-item { padding: 10px 14px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; }
+.uni-search-item:hover { background: var(--primary-light); }
+.uni-search-item .tag { font-size: 11px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header no-print">
+  <h1>🎓 高考志愿模拟填报系统</h1>
+  <p>2026年 · 基于最新招生政策 · 智能分析推荐</p>
+  <div class="badge">📘 支持新高考院校专业组 & 传统高考模式</div>
+</div>
+
+<div class="container">
+
+  <!-- 2026 Policy Banner -->
+  <div class="policy-banner no-print" id="policyBanner">
+    <div class="icon">📢</div>
+    <div>
+      <h4>2026年高考政策要点</h4>
+      <p>
+        ① 全国统考 6月7-8日举行；② 新高考省份全面实行<strong>院校专业组</strong>模式，要求关联度高的专业编入同一组；
+        ③ 高校专业向<strong>基础学科、新兴学科、交叉学科</strong>倾斜；④ 志愿填报将更友好，优化专业组设置避免"冷热捆绑"；
+        ⑤ 合并本科批次后<strong>不服从调剂风险极大</strong>，可能导致滑档。
+      </p>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps no-print" id="stepsBar">
+    <div class="step-item active" data-step="1" onclick="goToStep(1)">
+      <div class="step-num">1</div>
+      <div class="step-label">基本信息</div>
+    </div>
+    <div class="step-item" data-step="2" onclick="goToStep(2)">
+      <div class="step-num">2</div>
+      <div class="step-label">分数 & 选科</div>
+    </div>
+    <div class="step-item" data-step="3" onclick="goToStep(3)">
+      <div class="step-num">3</div>
+      <div class="step-label">志愿填报</div>
+    </div>
+    <div class="step-item" data-step="4" onclick="goToStep(4)">
+      <div class="step-num">4</div>
+      <div class="step-label">模拟分析</div>
+    </div>
+  </div>
+
+  <!-- STEP 1: 基本信息 -->
+  <div class="section-panel active" id="step1">
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> 考生基本信息</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">考生所在省份 *</label>
+          <select id="province" onchange="onProvinceChange()">
+            <option value="">请选择省份</option>
+            <option value="北京">北京</option><option value="天津">天津</option>
+            <option value="河北">河北</option><option value="山西">山西</option>
+            <option value="内蒙古">内蒙古</option><option value="辽宁">辽宁</option>
+            <option value="吉林">吉林</option><option value="黑龙江">黑龙江</option>
+            <option value="上海">上海</option><option value="江苏">江苏</option>
+            <option value="浙江">浙江</option><option value="安徽">安徽</option>
+            <option value="福建">福建</option><option value="江西">江西</option>
+            <option value="山东">山东</option><option value="河南">河南</option>
+            <option value="湖北">湖北</option><option value="湖南">湖南</option>
+            <option value="广东">广东</option><option value="广西">广西</option>
+            <option value="海南">海南</option><option value="重庆">重庆</option>
+            <option value="四川">四川</option><option value="贵州">贵州</option>
+            <option value="云南">云南</option><option value="西藏">西藏</option>
+            <option value="陕西">陕西</option><option value="甘肃">甘肃</option>
+            <option value="青海">青海</option><option value="宁夏">宁夏</option>
+            <option value="新疆">新疆</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">考生科类 *</label>
+          <select id="category" onchange="onCategoryChange()">
+            <option value="">请选择科类</option>
+          </select>
+          <div class="form-hint" id="categoryHint"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">高考模式 *</label>
+          <div class="radio-cards" id="modeCards">
+            <div class="radio-card" data-value="new" onclick="selectMode('new')">
+              <h4>🔬 新高考模式</h4>
+              <p>3+1+2 或 3+3，采用院校专业组/专业+院校志愿模式</p>
+            </div>
+            <div class="radio-card" data-value="old" onclick="selectMode('old')">
+              <h4>📚 传统高考模式</h4>
+              <p>文理分科，以院校为单位填报志愿</p>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">年份</label>
+          <select id="year">
+            <option value="2026" selected>2026年</option>
+            <option value="2025">2025年（参考）</option>
+            <option value="2024">2024年（参考）</option>
+          </select>
+          <div class="form-hint">正式数据发布前可使用往年数据参考</div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="goToStep(2)">下一步：分数与选科 →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: 分数 & 选科 -->
+  <div class="section-panel" id="step2">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> 成绩信息</div>
+      <div class="grid-3">
+        <div class="form-group">
+          <label class="form-label">高考总分 *</label>
+          <input type="number" id="totalScore" placeholder="如 580" min="0" max="750" oninput="updateScoreDisplay()">
+          <div class="form-hint" id="scoreRangeHint">满分视模式而定（新高考750 / 上海660 / 海南900）</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">全省排名（位次）</label>
+          <input type="number" id="ranking" placeholder="如 15000" min="1">
+          <div class="form-hint">位次比分数更准确，建议填写</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分数对应批次线</label>
+          <select id="batchLine">
+            <option value="">请选择</option>
+            <option value="special">特殊类型控制线（强基/综评等）</option>
+            <option value="undergrad1">本科一批 / 本科线</option>
+            <option value="undergrad2">本科二批</option>
+            <option value="junior">专科线</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新高考选科 -->
+    <div class="card" id="subjectCard" style="display:none">
+      <div class="card-title"><span class="icon">🧪</span> 选科组合 <span class="tag tag-wen" id="examModeTag" style="margin-left:8px;font-size:12px"></span></div>
+      <div id="subjectSection"></div>
+    </div>
+
+    <!-- 传统高考文理 -->
+    <div class="card" id="oldSubjectCard" style="display:none">
+      <div class="card-title"><span class="icon">📖</span> 科类选择</div>
+      <div class="chip-group">
+        <div class="chip" data-subj="wenke" onclick="selectOldSubject(this)">文科</div>
+        <div class="chip" data-subj="like" onclick="selectOldSubject(this)">理科</div>
+        <div class="chip" data-subj="none" onclick="selectOldSubject(this)">不分文理</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🎯</span> 个人偏好（可选）</div>
+      <div class="form-group">
+        <label class="form-label">意向地区（多选）</label>
+        <div class="chip-group" id="regionChips">
+          <div class="chip" onclick="toggleChip(this)">北京</div>
+          <div class="chip" onclick="toggleChip(this)">上海</div>
+          <div class="chip" onclick="toggleChip(this)">广东</div>
+          <div class="chip" onclick="toggleChip(this)">江苏</div>
+          <div class="chip" onclick="toggleChip(this)">浙江</div>
+          <div class="chip" onclick="toggleChip(this)">四川</div>
+          <div class="chip" onclick="toggleChip(this)">湖北</div>
+          <div class="chip" onclick="toggleChip(this)">湖南</div>
+          <div class="chip" onclick="toggleChip(this)">山东</div>
+          <div class="chip" onclick="toggleChip(this)">陕西</div>
+          <div class="chip" onclick="toggleChip(this)">不限</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">意向专业方向（多选）</label>
+        <div class="chip-group" id="majorChips">
+          <div class="chip" onclick="toggleChip(this)">计算机类</div>
+          <div class="chip" onclick="toggleChip(this)">电子信息类</div>
+          <div class="chip" onclick="toggleChip(this)">临床医学</div>
+          <div class="chip" onclick="toggleChip(this)">金融学</div>
+          <div class="chip" onclick="toggleChip(this)">法学</div>
+          <div class="chip" onclick="toggleChip(this)">师范类</div>
+          <div class="chip" onclick="toggleChip(this)">人工智能</div>
+          <div class="chip" onclick="toggleChip(this)">新能源</div>
+          <div class="chip" onclick="toggleChip(this)">不限</div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="goToStep(1)">← 上一步</button>
+      <button class="btn btn-primary" onclick="goToStep(3)">下一步：志愿填报 →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: 志愿填报 -->
+  <div class="section-panel" id="step3">
+    <div class="card">
+      <div class="card-title"><span class="icon">✏️</span> 添加志愿院校</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">搜索院校</label>
+          <div class="uni-search">
+            <input type="text" id="uniSearch" placeholder="输入院校名称搜索..." oninput="searchUniversity()" onfocus="searchUniversity()">
+            <div class="uni-search-results" id="uniResults"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">院校代码</label>
+          <input type="text" id="uniCode" placeholder="如 10001（北京大学）" readonly>
+        </div>
+      </div>
+      <div class="form-group" id="majorGroupSection" style="display:none">
+        <label class="form-label">选择专业组</label>
+        <select id="majorGroup">
+          <option value="">先选择院校</option>
+        </select>
+        <div class="form-hint" id="majorGroupHint"></div>
+      </div>
+      <div class="form-group" id="majorSelectSection" style="display:none">
+        <label class="form-label">选择专业（可多选，按优先级排序）</label>
+        <div id="majorList"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="adjustCheck" checked style="width:16px;height:16px;accent-color:var(--primary)">
+          服从调剂（<span style="color:var(--danger);font-weight:600">强烈建议勾选</span>）
+        </label>
+        <div class="form-hint">2026年合并本科批次后，不服从调剂一旦退档可能直接滑档</div>
+      </div>
+      <button class="btn btn-primary" onclick="addWish()">➕ 添加到志愿表</button>
+    </div>
+
+    <!-- 志愿列表 -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📝</span> 我的志愿表 <span id="wishCount" style="background:var(--primary-light);color:var(--primary);padding:2px 10px;border-radius:12px;font-size:13px;margin-left:8px">0</span></div>
+      <div class="wish-list" id="wishList">
+        <div class="wish-empty">📋 还没有添加志愿，请搜索并添加院校</div>
+      </div>
+      <div class="btn-group" style="margin-top:16px">
+        <button class="btn btn-outline btn-sm" onclick="clearAllWishes()">🗑️ 清空</button>
+        <button class="btn btn-outline btn-sm" onclick="autoFillWishes()">✨ 智能推荐填充</button>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="goToStep(2)">← 上一步</button>
+      <button class="btn btn-success" onclick="goToStep(4)">📊 开始模拟分析</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: 模拟分析 -->
+  <div class="section-panel" id="step4">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> 志愿填报分析报告</div>
+      <div id="analysisContent"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> 风险分布</div>
+      <div class="bar-chart" id="riskChart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💡</span> 智能建议</div>
+      <div id="suggestions"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> 详细志愿表</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="detailTable">
+          <thead>
+            <tr>
+              <th>序号</th><th>院校</th><th>专业组</th><th>专业</th><th>风险</th><th>录取概率</th><th>调剂</th>
+            </tr>
+          </thead>
+          <tbody id="detailBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="goToStep(3)">← 修改志愿</button>
+      <button class="btn btn-primary" onclick="exportReport()">📄 导出报告</button>
+      <button class="btn btn-success" onclick="window.print()">🖨️ 打印</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: 院校详情 -->
+<div class="modal-overlay" id="uniModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">院校详情</h3>
+      <button class="close-btn" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// 数据层：模拟院校数据库
+// ============================================
+const UNIVERSITIES = [
+  { code:'10001', name:'北京大学', city:'北京', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10002', name:'中国人民大学', city:'北京', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10003', name:'清华大学', city:'北京', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10006', name:'北京航空航天大学', city:'北京', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10007', name:'北京理工大学', city:'北京', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10008', name:'北京科技大学', city:'北京', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10010', name:'北京化工大学', city:'北京', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10013', name:'北京邮电大学', city:'北京', type:'211', tier:'A', tags:['理工','双一流'] },
+  { code:'10019', name:'中国农业大学', city:'北京', type:'985', tier:'B', tags:['农林','双一流'] },
+  { code:'10022', name:'北京林业大学', city:'北京', type:'211', tier:'B', tags:['农林','双一流'] },
+  { code:'10027', name:'北京师范大学', city:'北京', type:'985', tier:'A', tags:['师范','双一流'] },
+  { code:'10030', name:'北京外国语大学', city:'北京', type:'211', tier:'B', tags:['语言','双一流'] },
+  { code:'10034', name:'中央财经大学', city:'北京', type:'211', tier:'B', tags:['财经','双一流'] },
+  { code:'10036', name:'对外经济贸易大学', city:'北京', type:'211', tier:'B', tags:['财经','双一流'] },
+  { code:'10052', name:'中央民族大学', city:'北京', type:'985', tier:'B', tags:['民族','双一流'] },
+  { code:'10053', name:'中国政法大学', city:'北京', type:'211', tier:'B', tags:['政法','双一流'] },
+  { code:'10055', name:'南开大学', city:'天津', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10056', name:'天津大学', city:'天津', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10079', name:'华北电力大学', city:'保定', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10141', name:'大连理工大学', city:'大连', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10145', name:'东北大学', city:'沈阳', type:'985', tier:'B', tags:['理工','双一流'] },
+  { code:'10183', name:'吉林大学', city:'长春', type:'985', tier:'B', tags:['综合','双一流'] },
+  { code:'10200', name:'东北师范大学', city:'长春', type:'211', tier:'B', tags:['师范','双一流'] },
+  { code:'10213', name:'哈尔滨工业大学', city:'哈尔滨', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10217', name:'哈尔滨工程大学', city:'哈尔滨', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10246', name:'复旦大学', city:'上海', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10247', name:'同济大学', city:'上海', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10248', name:'上海交通大学', city:'上海', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10251', name:'华东理工大学', city:'上海', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10255', name:'东华大学', city:'上海', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10269', name:'华东师范大学', city:'上海', type:'985', tier:'A', tags:['师范','双一流'] },
+  { code:'10271', name:'上海外国语大学', city:'上海', type:'211', tier:'B', tags:['语言','双一流'] },
+  { code:'10272', name:'上海财经大学', city:'上海', type:'211', tier:'A', tags:['财经','双一流'] },
+  { code:'10280', name:'上海大学', city:'上海', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10284', name:'南京大学', city:'南京', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10286', name:'东南大学', city:'南京', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10287', name:'南京航空航天大学', city:'南京', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10288', name:'南京理工大学', city:'南京', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10290', name:'中国矿业大学', city:'徐州', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10294', name:'河海大学', city:'南京', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10295', name:'江南大学', city:'无锡', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10307', name:'南京农业大学', city:'南京', type:'211', tier:'B', tags:['农林','双一流'] },
+  { code:'10316', name:'中国药科大学', city:'南京', type:'211', tier:'B', tags:['医药','双一流'] },
+  { code:'10335', name:'浙江大学', city:'杭州', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10358', name:'中国科学技术大学', city:'合肥', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10359', name:'合肥工业大学', city:'合肥', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10384', name:'厦门大学', city:'厦门', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10385', name:'华侨大学', city:'泉州', type:'普通', tier:'C', tags:['综合'] },
+  { code:'10403', name:'南昌大学', city:'南昌', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10422', name:'山东大学', city:'济南', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10423', name:'中国海洋大学', city:'青岛', type:'985', tier:'B', tags:['综合','双一流'] },
+  { code:'10425', name:'中国石油大学(华东)', city:'青岛', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10459', name:'郑州大学', city:'郑州', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10486', name:'武汉大学', city:'武汉', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10487', name:'华中科技大学', city:'武汉', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10491', name:'中国地质大学(武汉)', city:'武汉', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10497', name:'武汉理工大学', city:'武汉', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10504', name:'华中农业大学', city:'武汉', type:'211', tier:'B', tags:['农林','双一流'] },
+  { code:'10511', name:'华中师范大学', city:'武汉', type:'211', tier:'B', tags:['师范','双一流'] },
+  { code:'10520', name:'中南财经政法大学', city:'武汉', type:'211', tier:'B', tags:['财经','双一流'] },
+  { code:'10532', name:'湖南大学', city:'长沙', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10533', name:'中南大学', city:'长沙', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10536', name:'长沙理工大学', city:'长沙', type:'普通', tier:'C', tags:['理工'] },
+  { code:'10542', name:'湖南师范大学', city:'长沙', type:'211', tier:'B', tags:['师范','双一流'] },
+  { code:'10558', name:'中山大学', city:'广州', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10559', name:'暨南大学', city:'广州', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10561', name:'华南理工大学', city:'广州', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10564', name:'华南农业大学', city:'广州', type:'双一流', tier:'C', tags:['农林','双一流'] },
+  { code:'10574', name:'华南师范大学', city:'广州', type:'211', tier:'B', tags:['师范','双一流'] },
+  { code:'10593', name:'广西大学', city:'南宁', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10610', name:'四川大学', city:'成都', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10611', name:'重庆大学', city:'重庆', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10613', name:'西南交通大学', city:'成都', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10614', name:'电子科技大学', city:'成都', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10635', name:'西南大学', city:'重庆', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10651', name:'西南财经大学', city:'成都', type:'211', tier:'B', tags:['财经','双一流'] },
+  { code:'10657', name:'贵州大学', city:'贵阳', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10673', name:'云南大学', city:'昆明', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10694', name:'西藏大学', city:'拉萨', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10697', name:'西北大学', city:'西安', type:'211', tier:'B', tags:['综合','双一流'] },
+  { code:'10698', name:'西安交通大学', city:'西安', type:'985', tier:'A', tags:['综合','双一流'] },
+  { code:'10699', name:'西北工业大学', city:'西安', type:'985', tier:'A', tags:['理工','双一流'] },
+  { code:'10701', name:'西安电子科技大学', city:'西安', type:'211', tier:'A', tags:['理工','双一流'] },
+  { code:'10710', name:'长安大学', city:'西安', type:'211', tier:'B', tags:['理工','双一流'] },
+  { code:'10712', name:'西北农林科技大学', city:'咸阳', type:'985', tier:'B', tags:['农林','双一流'] },
+  { code:'10718', name:'陕西师范大学', city:'西安', type:'211', tier:'B', tags:['师范','双一流'] },
+  { code:'10730', name:'兰州大学', city:'兰州', type:'985', tier:'B', tags:['综合','双一流'] },
+  { code:'10743', name:'青海大学', city:'西宁', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10749', name:'宁夏大学', city:'银川', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10755', name:'新疆大学', city:'乌鲁木齐', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'10759', name:'石河子大学', city:'石河子', type:'211', tier:'C', tags:['综合','双一流'] },
+  { code:'19001', name:'北京航空航天大学中法航空学院', city:'杭州', type:'中外', tier:'B', tags:['理工','中外合作'] },
+  { code:'19141', name:'大连理工大学(盘锦校区)', city:'盘锦', type:'985', tier:'B', tags:['理工','双一流'] },
+  { code:'19246', name:'复旦大学上海医学院', city:'上海', type:'985', tier:'A', tags:['医药','双一流'] },
+  { code:'19248', name:'上海交通大学医学院', city:'上海', type:'985', tier:'A', tags:['医药','双一流'] },
+  { code:'19335', name:'浙江大学医学院', city:'杭州', type:'985', tier:'A', tags:['医药','双一流'] },
+];
+
+// 专业组模板（新高考模拟数据）
+const MAJOR_GROUPS_TEMPLATES = {
+  '理工组': { subjects: ['物理'], majors: ['计算机科学与技术','软件工程','人工智能','电子信息工程','通信工程','自动化','数据科学与大数据技术','物联网工程'] },
+  '物理+化学组': { subjects: ['物理','化学'], majors: ['化学工程与工艺','材料科学与工程','环境工程','生物工程','制药工程','应用化学','能源化学工程','高分子材料与工程'] },
+  '物化生组': { subjects: ['物理','化学','生物'], majors: ['临床医学','口腔医学','预防医学','药学','生物医学工程','基础医学','医学影像学','麻醉学'] },
+  '人文社科组': { subjects: ['历史'], majors: ['汉语言文学','历史学','哲学','新闻学','广告学','传播学','编辑出版学','文化产业管理'] },
+  '经管组': { subjects: ['不限'], majors: ['金融学','会计学','工商管理','国际经济与贸易','市场营销','财务管理','人力资源管理','电子商务'] },
+  '法学政治组': { subjects: ['政治'], majors: ['法学','政治学与行政学','社会学','社会工作','思想政治教育','国际政治','外交学','公共事业管理'] },
+  '外语组': { subjects: ['不限'], majors: ['英语','日语','法语','德语','翻译','商务英语','俄语','西班牙语'] },
+  '教育组': { subjects: ['不限'], majors: ['教育学','学前教育','小学教育','特殊教育','心理学','应用心理学','体育教育','教育技术学'] },
+  '土木建筑组': { subjects: ['物理'], majors: ['土木工程','建筑学','城乡规划','工程管理','给排水科学与工程','建筑环境与能源应用工程','道路桥梁与渡河工程','工程力学'] },
+  '农林组': { subjects: ['化学','生物'], majors: ['农学','园艺','植物保护','动物科学','动物医学','林学','园林','食品科学与工程'] },
+};
+
+// 省份 → 高考模式 & 志愿数量配置
+const PROVINCE_CONFIG = {
+  '北京': { mode:'new', system:'3+3', maxWishes:30, unit:'院校专业组', maxScore:750 },
+  '天津': { mode:'new', system:'3+3', maxWishes:50, unit:'院校专业组', maxScore:750 },
+  '上海': { mode:'new', system:'3+3', maxWishes:24, unit:'院校专业组', maxScore:660 },
+  '浙江': { mode:'new', system:'3+3', maxWishes:80, unit:'专业+院校', maxScore:750 },
+  '山东': { mode:'new', system:'3+3', maxWishes:96, unit:'专业+院校', maxScore:750 },
+  '海南': { mode:'new', system:'3+3', maxWishes:24, unit:'院校专业组', maxScore:900 },
+  '河北': { mode:'new', system:'3+1+2', maxWishes:96, unit:'专业+院校', maxScore:750 },
+  '辽宁': { mode:'new', system:'3+1+2', maxWishes:112, unit:'专业+院校', maxScore:750 },
+  '江苏': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '福建': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '湖北': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '湖南': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '广东': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '重庆': { mode:'new', system:'3+1+2', maxWishes:96, unit:'专业+院校', maxScore:750 },
+  '安徽': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '江西': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '甘肃': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '黑龙江': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '吉林': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '广西': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '贵州': { mode:'new', system:'3+1+2', maxWishes:45, unit:'院校专业组', maxScore:750 },
+  '云南': { mode:'new', system:'3+1+2', maxWishes:40, unit:'院校专业组', maxScore:750 },
+  '四川': { mode:'old', system:'文理分科', maxWishes:9, unit:'院校', maxScore:750 },
+  '河南': { mode:'old', system:'文理分科', maxWishes:12, unit:'院校', maxScore:750 },
+  '山西': { mode:'old', system:'文理分科', maxWishes:8, unit:'院校', maxScore:750 },
+  '内蒙古': { mode:'old', system:'文理分科', maxWishes:45, unit:'院校', maxScore:750 },
+  '陕西': { mode:'old', system:'文理分科', maxWishes:12, unit:'院校', maxScore:750 },
+  '西藏': { mode:'old', system:'文理分科', maxWishes:10, unit:'院校', maxScore:750 },
+  '青海': { mode:'old', system:'文理分科', maxWishes:12, unit:'院校', maxScore:750 },
+  '宁夏': { mode:'old', system:'文理分科', maxWishes:8, unit:'院校', maxScore:750 },
+  '新疆': { mode:'old', system:'文理分科', maxWishes:18, unit:'院校', maxScore:750 },
+};
+
+// 3+1+2 选科
+const SUBJECTS_312 = {
+  first: ['物理','历史'],   // 首选
+  second: ['化学','生物','政治','地理'] // 再选2
+};
+// 3+3 选科
+const SUBJECTS_33 = ['物理','化学','生物','历史','地理','政治'];
+
+// ============================================
+// 全局状态
+// ============================================
+let currentStep = 1;
+let appState = {
+  province: '',
+  category: '',
+  mode: '',    // 'new' or 'old'
+  system: '',  // '3+1+2' or '3+3' or '文理分科'
+  year: 2026,
+  score: 0,
+  ranking: 0,
+  batchLine: '',
+  selectedSubjects: [],   // 新高考选科
+  oldSubject: '',          // 传统文理
+  preferences: { regions: [], majors: [] },
+  wishes: [],              // 志愿列表
+};
+
+// ============================================
+// UI 控制函数
+// ============================================
+
+function goToStep(step) {
+  if (step > currentStep + 1) return;
+  // validation
+  if (step === 2 && currentStep === 1) {
+    if (!appState.province) return alert('请选择省份');
+    if (!appState.mode) return alert('请选择高考模式');
+  }
+  if (step === 3 && currentStep === 2) {
+    if (!appState.score) return alert('请输入高考总分');
+  }
+
+  currentStep = step;
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step' + step).classList.add('active');
+
+  document.querySelectorAll('.step-item').forEach(el => {
+    const s = parseInt(el.dataset.step);
+    el.classList.remove('active','completed');
+    if (s === step) el.classList.add('active');
+    else if (s < step) el.classList.add('completed');
+  });
+
+  if (step === 4) generateAnalysis();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function onProvinceChange() {
+  const p = document.getElementById('province').value;
+  appState.province = p;
+  const config = PROVINCE_CONFIG[p];
+  if (config) {
+    // 自动设置模式
+    appState.mode = config.mode;
+    appState.system = config.system;
+    document.querySelectorAll('.radio-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.value === config.mode);
+    });
+    // 更新科类选择
+    updateCategoryOptions(config);
+    document.getElementById('scoreRangeHint').textContent = `该省满分 ${config.maxScore} 分，可填报 ${config.maxWishes} 个${config.unit}志愿`;
+  }
+}
+
+function updateCategoryOptions(config) {
+  const sel = document.getElementById('category');
+  sel.innerHTML = '<option value="">请选择科类</option>';
+  if (config.system === '3+1+2') {
+    sel.innerHTML += '<option value="物理类">物理类</option><option value="历史类">历史类</option>';
+    document.getElementById('categoryHint').textContent = '新高考3+1+2模式，按物理/历史方向录取';
+  } else if (config.system === '3+3') {
+    sel.innerHTML += '<option value="综合">综合（不分文理）</option>';
+    document.getElementById('categoryHint').textContent = '新高考3+3模式，不分文理';
+  } else {
+    sel.innerHTML += '<option value="文科">文科</option><option value="理科">理科</option>';
+    document.getElementById('categoryHint').textContent = '传统高考模式，文理分科';
+  }
+}
+
+function onCategoryChange() {
+  appState.category = document.getElementById('category').value;
+}
+
+function selectMode(mode) {
+  appState.mode = mode;
+  document.querySelectorAll('.radio-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.value === mode);
+  });
+  if (mode === 'new') {
+    appState.system = '3+1+2';
+    updateCategoryOptions({ system: '3+1+2' });
+  } else {
+    appState.system = '文理分科';
+    updateCategoryOptions({ system: '文理分科' });
+  }
+}
+
+function selectOldSubject(el) {
+  document.querySelectorAll('#oldSubjectCard .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  appState.oldSubject = el.dataset.subj;
+}
+
+function toggleChip(el) {
+  el.classList.toggle('selected');
+}
+
+// 新高考选科 UI 渲染
+function renderSubjectSelection() {
+  const card = document.getElementById('subjectCard');
+  const oldCard = document.getElementById('oldSubjectCard');
+  const section = document.getElementById('subjectSection');
+
+  if (appState.mode === 'new') {
+    card.style.display = '';
+    oldCard.style.display = 'none';
+
+    if (appState.system === '3+1+2') {
+      document.getElementById('examModeTag').textContent = '3+1+2';
+      section.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">首选科目（二选一）</label>
+          <div class="chip-group">
+            ${SUBJECTS_312.first.map(s => `<div class="chip" data-subj="${s}" data-type="first" onclick="selectFirstSubject(this)">${s}</div>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">再选科目（四选二）</label>
+          <div class="chip-group">
+            ${SUBJECTS_312.second.map(s => `<div class="chip" data-subj="${s}" data-type="second" onclick="selectSecondSubject(this)">${s}</div>`).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      document.getElementById('examModeTag').textContent = '3+3';
+      section.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">选考科目（六选三）</label>
+          <div class="chip-group">
+            ${SUBJECTS_33.map(s => `<div class="chip" data-subj="${s}" onclick="select33Subject(this)">${s}</div>`).join('')}
+          </div>
+          <div class="form-hint">已选 <span id="subj33count">0</span>/3 科</div>
+        </div>
+      `;
+    }
+  } else {
+    card.style.display = 'none';
+    oldCard.style.display = '';
+  }
+}
+
+function selectFirstSubject(el) {
+  document.querySelectorAll('[data-type="first"]').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  appState.selectedSubjects[0] = el.dataset.subj;
+}
+
+function selectSecondSubject(el) {
+  const selected = document.querySelectorAll('[data-type="second"].selected');
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+  } else if (selected.length < 2) {
+    el.classList.add('selected');
+  }
+  appState.selectedSubjects = [
+    document.querySelector('[data-type="first"].selected')?.dataset.subj || '',
+    ...Array.from(document.querySelectorAll('[data-type="second"].selected')).map(c => c.dataset.subj)
+  ];
+}
+
+function select33Subject(el) {
+  const selected = document.querySelectorAll('#subjectSection .chip.selected');
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+  } else if (selected.length < 3) {
+    el.classList.add('selected');
+  }
+  appState.selectedSubjects = Array.from(document.querySelectorAll('#subjectSection .chip.selected')).map(c => c.dataset.subj);
+  const countEl = document.getElementById('subj33count');
+  if (countEl) countEl.textContent = appState.selectedSubjects.length;
+}
+
+function updateScoreDisplay() {
+  appState.score = parseInt(document.getElementById('totalScore').value) || 0;
+}
+
+// ============================================
+// 志愿填报
+// ============================================
+
+function searchUniversity() {
+  const q = document.getElementById('uniSearch').value.trim().toLowerCase();
+  const results = document.getElementById('uniResults');
+  if (!q) { results.classList.remove('show'); return; }
+  const matches = UNIVERSITIES.filter(u =>
+    u.name.toLowerCase().includes(q) || u.code.includes(q) || u.city.includes(q)
+  ).slice(0, 15);
+
+  if (matches.length === 0) {
+    results.innerHTML = '<div class="uni-search-item" style="color:var(--text-secondary)">未找到匹配院校</div>';
+  } else {
+    results.innerHTML = matches.map(u => `
+      <div class="uni-search-item" onclick="selectUniversity('${u.code}')">
+        <span>${u.name}（${u.city}）</span>
+        <span class="tag ${u.type === '985' ? 'tag-chong' : u.type === '211' ? 'tag-wen' : 'tag-bao'}">${u.type}</span>
+      </div>
+    `).join('');
+  }
+  results.classList.add('show');
+}
+
+function selectUniversity(code) {
+  const u = UNIVERSITIES.find(x => x.code === code);
+  if (!u) return;
+  document.getElementById('uniSearch').value = u.name;
+  document.getElementById('uniCode').value = u.code;
+  document.getElementById('uniResults').classList.remove('show');
+
+  // 生成专业组
+  const mgSection = document.getElementById('majorGroupSection');
+  const msSection = document.getElementById('majorSelectSection');
+  if (appState.mode === 'new') {
+    mgSection.style.display = '';
+    msSection.style.display = '';
+    renderMajorGroups(u);
+  } else {
+    mgSection.style.display = 'none';
+    msSection.style.display = '';
+    renderOldMajors(u);
+  }
+}
+
+function renderMajorGroups(university) {
+  const sel = document.getElementById('majorGroup');
+  const keys = Object.keys(MAJOR_GROUPS_TEMPLATES);
+  // 根据院校类型选择专业组
+  let groups;
+  if (university.type === '985') {
+    groups = keys.slice(0, 6);
+  } else if (university.type === '211') {
+    groups = keys.slice(0, 5);
+  } else {
+    groups = keys.slice(0, 4);
+  }
+
+  sel.innerHTML = '<option value="">请选择专业组</option>' +
+    groups.map(g => `<option value="${g}">${g}（${MAJOR_GROUPS_TEMPLATES[g].majors.length}个专业）</option>`).join('');
+
+  sel.onchange = function() {
+    const g = sel.value;
+    if (g) renderMajorOptions(g);
+    document.getElementById('majorGroupHint').textContent = g ?
+      `选科要求：${MAJOR_GROUPS_TEMPLATES[g].subjects.join('、')}` : '';
+  };
+}
+
+function renderMajorOptions(groupName) {
+  const container = document.getElementById('majorList');
+  const majors = MAJOR_GROUPS_TEMPLATES[groupName].majors;
+  container.innerHTML = majors.map(m => `
+    <label class="major-check">
+      <input type="checkbox" value="${m}" onchange="updateSelectedMajors()">
+      ${m}
+    </label>
+  `).join('');
+}
+
+function renderOldMajors(university) {
+  const container = document.getElementById('majorList');
+  // 传统模式，从所有组中抽取6个专业
+  const allMajors = Object.values(MAJOR_GROUPS_TEMPLATES).flatMap(g => g.majors);
+  const shuffled = allMajors.sort(() => Math.random() - .5).slice(0, 12);
+  container.innerHTML = shuffled.map(m => `
+    <label class="major-check">
+      <input type="checkbox" value="${m}" onchange="updateSelectedMajors()">
+      ${m}
+    </label>
+  `).join('');
+}
+
+function updateSelectedMajors() {
+  // just a placeholder for tracking
+}
+
+function addWish() {
+  const code = document.getElementById('uniCode').value;
+  const u = UNIVERSITIES.find(x => x.code === code);
+  if (!u) return alert('请先搜索并选择院校');
+
+  const adjust = document.getElementById('adjustCheck').checked;
+  let groupName = '';
+  let majors = [];
+
+  if (appState.mode === 'new') {
+    groupName = document.getElementById('majorGroup').value;
+    if (!groupName) return alert('请选择专业组');
+    majors = Array.from(document.querySelectorAll('#majorList input:checked')).map(c => c.value);
+  } else {
+    majors = Array.from(document.querySelectorAll('#majorList input:checked')).map(c => c.value);
+  }
+
+  const config = PROVINCE_CONFIG[appState.province];
+  if (config && appState.wishes.length >= config.maxWishes) {
+    return alert(`已达最大志愿数（${config.maxWishes}个）`);
+  }
+
+  appState.wishes.push({
+    id: Date.now(),
+    university: u,
+    groupName,
+    majors,
+    adjust,
+  });
+
+  renderWishList();
+  // Reset form
+  document.getElementById('uniSearch').value = '';
+  document.getElementById('uniCode').value = '';
+  document.getElementById('majorGroupSection').style.display = 'none';
+  document.getElementById('majorSelectSection').style.display = 'none';
+}
+
+function renderWishList() {
+  const container = document.getElementById('wishList');
+  document.getElementById('wishCount').textContent = appState.wishes.length;
+
+  if (appState.wishes.length === 0) {
+    container.innerHTML = '<div class="wish-empty">📋 还没有添加志愿，请搜索并添加院校</div>';
+    return;
+  }
+
+  container.innerHTML = appState.wishes.map((w, i) => `
+    <div class="wish-item">
+      <div class="wish-num">${i + 1}</div>
+      <div class="wish-info">
+        <div class="wish-uni">${w.university.name} <span class="tag ${w.university.type==='985'?'tag-chong':w.university.type==='211'?'tag-wen':'tag-bao'}" style="font-size:11px">${w.university.type}</span> ${w.university.city}</div>
+        <div class="wish-majors">${w.groupName ? w.groupName + ' · ' : ''}${w.majors.join('、') || '未选专业'} ${w.adjust ? '✅服从调剂' : '⚠️不服从'}</div>
+      </div>
+      <div class="wish-actions">
+        <button onclick="moveWish(${i},-1)" title="上移">⬆️</button>
+        <button onclick="moveWish(${i},1)" title="下移">⬇️</button>
+        <button onclick="removeWish(${i})" title="删除">❌</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function moveWish(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= appState.wishes.length) return;
+  [appState.wishes[idx], appState.wishes[newIdx]] = [appState.wishes[newIdx], appState.wishes[idx]];
+  renderWishList();
+}
+
+function removeWish(idx) {
+  appState.wishes.splice(idx, 1);
+  renderWishList();
+}
+
+function clearAllWishes() {
+  if (appState.wishes.length && confirm('确定清空所有志愿？')) {
+    appState.wishes = [];
+    renderWishList();
+  }
+}
+
+// 智能推荐填充
+function autoFillWishes() {
+  const score = appState.score;
+  if (!score) return alert('请先填写高考分数');
+
+  // 根据分数选校
+  let pool = [...UNIVERSITIES];
+  // 按 tier 排序
+  const tierOrder = { 'A': 1, 'B': 2, 'C': 3 };
+  pool.sort((a, b) => (tierOrder[a.tier] || 4) - (tierOrder[b.tier] || 4));
+
+  // 分数映射到冲击/稳妥/保底
+  const config = PROVINCE_CONFIG[appState.province];
+  const maxScore = config ? config.maxScore : 750;
+  const ratio = score / maxScore;
+
+  let chongCount, wenCount, baoCount;
+  if (ratio >= 0.93) {      // 985+ 水平
+    chongCount = 5; wenCount = 3; baoCount = 2;
+  } else if (ratio >= 0.87) { // 211 水平
+    chongCount = 3; wenCount = 4; baoCount = 3;
+  } else if (ratio >= 0.80) {
+    chongCount = 3; wenCount = 3; baoCount = 4;
+  } else {
+    chongCount = 2; wenCount = 4; baoCount = 4;
+  }
+
+  // 取院校
+  const tierA = pool.filter(u => u.tier === 'A').sort(() => Math.random() - .5);
+  const tierB = pool.filter(u => u.tier === 'B').sort(() => Math.random() - .5);
+  const tierC = pool.filter(u => u.tier === 'C').sort(() => Math.random() - .5);
+
+  const picks = [
+    ...tierA.slice(0, chongCount),
+    ...tierB.slice(0, wenCount),
+    ...tierC.slice(0, baoCount),
+  ];
+
+  const groupKeys = Object.keys(MAJOR_GROUPS_TEMPLATES);
+
+  picks.forEach(u => {
+    const gKey = groupKeys[Math.floor(Math.random() * Math.min(3, groupKeys.length))];
+    const g = MAJOR_GROUPS_TEMPLATES[gKey];
+    appState.wishes.push({
+      id: Date.now() + Math.random(),
+      university: u,
+      groupName: gKey,
+      majors: g.majors.slice(0, 3),
+      adjust: true,
+    });
+  });
+
+  renderWishList();
+}
+
+// ============================================
+// 分析引擎
+// ============================================
+
+function generateAnalysis() {
+  // 收集偏好
+  appState.preferences.regions = Array.from(document.querySelectorAll('#regionChips .chip.selected')).map(c => c.textContent);
+  appState.preferences.majors = Array.from(document.querySelectorAll('#majorChips .chip.selected')).map(c => c.textContent);
+
+  const score = appState.score;
+  const config = PROVINCE_CONFIG[appState.province];
+  const maxScore = config ? config.maxScore : 750;
+  const ratio = score / maxScore;
+  const maxWishes = config ? config.maxWishes : 0;
+
+  // 为每个志愿分配风险等级
+  const total = appState.wishes.length;
+  const chongEnd = Math.ceil(total * 0.3);
+  const wenEnd = Math.ceil(total * 0.7);
+
+  appState.wishes.forEach((w, i) => {
+    if (i < chongEnd) w.risk = 'chong';
+    else if (i < wenEnd) w.risk = 'wen';
+    else w.risk = 'bao';
+
+    // 模拟录取概率
+    if (w.risk === 'chong') w.prob = Math.round(15 + Math.random() * 30);
+    else if (w.risk === 'wen') w.prob = Math.round(45 + Math.random() * 35);
+    else w.prob = Math.round(80 + Math.random() * 18);
+  });
+
+  // 统计
+  const chongCount = appState.wishes.filter(w => w.risk === 'chong').length;
+  const wenCount = appState.wishes.filter(w => w.risk === 'wen').length;
+  const baoCount = appState.wishes.filter(w => w.risk === 'bao').length;
+  const noAdjust = appState.wishes.filter(w => !w.adjust).length;
+  const avgProb = total ? Math.round(appState.wishes.reduce((s, w) => s + w.prob, 0) / total) : 0;
+
+  // 分析面板
+  document.getElementById('analysisContent').innerHTML = `
+    <div class="analysis-box">
+      <div class="analysis-title">📊 填报概况</div>
+      <div class="stat-row"><span>所在省份</span><span class="stat-value">${appState.province}</span></div>
+      <div class="stat-row"><span>高考模式</span><span class="stat-value">${config ? config.system + ' · ' + config.unit : '-'}</span></div>
+      <div class="stat-row"><span>高考总分</span><span class="stat-value">${score} / ${maxScore}（${(ratio*100).toFixed(1)}%）</span></div>
+      <div class="stat-row"><span>已填志愿数</span><span class="stat-value">${total} / ${maxWishes} 个</span></div>
+      <div class="stat-row"><span>冲击志愿</span><span class="stat-value" style="color:var(--danger)">${chongCount} 个</span></div>
+      <div class="stat-row"><span>稳妥志愿</span><span class="stat-value" style="color:#b45309">${wenCount} 个</span></div>
+      <div class="stat-row"><span>保底志愿</span><span class="stat-value" style="color:var(--success)">${baoCount} 个</span></div>
+      <div class="stat-row"><span>不服从调剂</span><span class="stat-value" style="color:${noAdjust ? 'var(--danger)' : 'var(--success)'}">${noAdjust} 个${noAdjust ? ' ⚠️' : ' ✅'}</span></div>
+      <div class="stat-row"><span>综合录取概率</span><span class="stat-value">${avgProb}%</span></div>
+    </div>
+  `;
+
+  // 风险分布条形图
+  const maxBar = Math.max(chongCount, wenCount, baoCount, 1);
+  document.getElementById('riskChart').innerHTML = `
+    <div class="bar-row">
+      <div class="bar-label" style="color:var(--danger)">🔴 冲击</div>
+      <div class="bar-track"><div class="bar-fill bar-chong" style="width:${(chongCount/total*100)||0}%">${chongCount}</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label" style="color:#b45309">🟡 稳妥</div>
+      <div class="bar-track"><div class="bar-fill bar-wen" style="width:${(wenCount/total*100)||0}%">${wenCount}</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label" style="color:var(--success)">🟢 保底</div>
+      <div class="bar-track"><div class="bar-fill bar-bao" style="width:${(baoCount/total*100)||0}%">${baoCount}</div></div>
+    </div>
+  `;
+
+  // 智能建议
+  const suggestions = [];
+  if (total < maxWishes * 0.5) suggestions.push(`⚠️ 你只填了 ${total} 个志愿，建议填满 ${maxWishes} 个以增加录取机会`);
+  if (noAdjust > 0) suggestions.push(`🔴 有 ${noAdjust} 个志愿未勾选"服从调剂"，合并批次后不服从调剂被退档风险极大，可能导致直接滑档`);
+  if (baoCount === 0) suggestions.push('🔴 没有保底志愿！建议至少填报 2-3 个稳妥保底院校，防止滑档');
+  if (chongCount > total * 0.5) suggestions.push('⚠️ 冲击志愿占比过高（超过50%），建议增加稳妥和保底志愿');
+  if (ratio >= 0.85 && appState.wishes.some(w => w.university.tier === 'C')) suggestions.push('💡 你的分数较高，保底院校层次偏低，可以适当提升保底档次');
+  if (ratio < 0.75 && appState.wishes.some(w => w.university.tier === 'A')) suggestions.push('⚠️ 你的分数冲击顶尖院校风险较大，建议合理评估');
+  if (appState.wishes.filter(w => !w.majors.length).length > 0) suggestions.push('📋 有志愿未选择具体专业，建议勾选以提高专业匹配度');
+
+  // 2026 政策建议
+  suggestions.push('📘 2026年提示：高校专业组将进一步优化，关联度高的专业编入同一组，注意避免"冷热捆绑"组');
+  suggestions.push('📘 2026年提示：专业向基础学科、新兴学科、交叉学科倾斜，可关注人工智能、新能源等新兴方向');
+
+  document.getElementById('suggestions').innerHTML = suggestions.map(s =>
+    `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">${s}</div>`
+  ).join('');
+
+  // 详细表格
+  document.getElementById('detailBody').innerHTML = appState.wishes.map((w, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${w.university.name}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${w.university.city} · ${w.university.type}</span></td>
+      <td>${w.groupName || '-'}</td>
+      <td style="font-size:12px">${w.majors.join('、') || '-'}</td>
+      <td><span class="tag tag-${w.risk}">${w.risk === 'chong' ? '冲' : w.risk === 'wen' ? '稳' : '保'}</span></td>
+      <td><strong>${w.prob}%</strong></td>
+      <td>${w.adjust ? '✅' : '<span style="color:var(--danger)">⚠️否</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+// 导出报告
+function exportReport() {
+  const report = [];
+  report.push('=== 高考志愿模拟填报分析报告 ===');
+  report.push(`省份：${appState.province} | 模式：${PROVINCE_CONFIG[appState.province]?.system || '-'}`);
+  report.push(`总分：${appState.score} | 位次：${appState.ranking || '未填'}`);
+  report.push(`志愿数：${appState.wishes.length}`);
+  report.push('');
+  appState.wishes.forEach((w, i) => {
+    report.push(`${i+1}. ${w.university.name}（${w.university.city}）${w.groupName ? ' - ' + w.groupName : ''}`);
+    report.push(`   专业：${w.majors.join('、') || '未选'} | 风险：${w.risk === 'chong' ? '冲' : w.risk === 'wen' ? '稳' : '保'} | 概率：${w.prob}% | 调剂：${w.adjust ? '是' : '否'}`);
+  });
+
+  const blob = new Blob([report.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `高考志愿模拟报告_${appState.province}_${appState.score}分.txt`;
+  a.click();
+}
+
+// ============================================
+// 监听切换
+// ============================================
+const observer = new MutationObserver(() => {
+  if (currentStep === 2) renderSubjectSelection();
+});
+// Step tracking via goToStep already handles this
+
+// Close search dropdown on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.uni-search')) {
+    document.getElementById('uniResults').classList.remove('show');
+  }
+});
+
+// Override goToStep to render subjects
+const _origGoToStep = goToStep;
+goToStep = function(step) {
+  _origGoToStep(step);
+  if (step === 2) renderSubjectSelection();
+};
+
+// Init
+console.log('🎓 高考志愿模拟填报系统 2026 已加载');
+</script>
+</body>
+</html>
