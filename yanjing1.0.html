@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>言镜1.0 — 教育行业智能沟通分析工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<!-- transformers.js 由动态 import 加载，避免 CDN 全局变量不一致问题 -->
+<style>
+:root {
+  --primary: #4F46E5;
+  --primary-light: #EEF2FF;
+  --primary-hover: #4338CA;
+  --green: #10B981;
+  --green-bg: #ECFDF5;
+  --yellow: #F59E0B;
+  --yellow-bg: #FFFBEB;
+  --red: #EF4444;
+  --red-bg: #FEF2F2;
+  --bg: #F1F5F9;
+  --card: #FFFFFF;
+  --text: #0F172A;
+  --text-secondary: #64748B;
+  --border: #E2E8F0;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-hover: 0 4px 12px rgba(0,0,0,0.12);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+button { cursor: pointer; font-family: inherit; }
+input, textarea { font-family: inherit; }
+
+/* Header */
+.header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { font-size: 22px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+.logo span { color: var(--text); }
+.header-actions { display: flex; gap: 8px; }
+.btn { padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--primary); color: var(--primary); }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { color: var(--red); border-color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 6px; border: none; background: none; color: var(--text-secondary); border-radius: 4px; }
+.btn-icon:hover { background: var(--bg); color: var(--text); }
+
+/* Main Layout */
+.main { display: flex; gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; }
+.input-panel { flex: 1; min-width: 0; }
+.report-panel { flex: 1; min-width: 0; }
+
+/* Cards */
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 16px; transition: box-shadow 0.2s; }
+.card:hover { box-shadow: var(--shadow-hover); }
+.card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-header-left { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+.card-body { padding: 18px; }
+
+/* Upload Area */
+.upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px; text-align: center; transition: all 0.3s; cursor: pointer; position: relative; }
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: var(--primary-light); }
+.upload-zone.dragover { border-style: solid; }
+.upload-zone-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-zone-text { color: var(--text-secondary); font-size: 14px; }
+.upload-zone-text strong { color: var(--primary); }
+.upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-formats { color: var(--text-secondary); font-size: 12px; margin-top: 6px; }
+
+/* File List */
+.file-list { margin-top: 12px; }
+.file-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg); border-radius: var(--radius-sm); margin-bottom: 6px; animation: slideIn 0.3s ease; }
+.file-item.removing { animation: slideOut 0.3s ease forwards; }
+.file-icon { font-size: 20px; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-meta { font-size: 11px; color: var(--text-secondary); }
+.file-delete { background: none; border: none; color: var(--text-secondary); font-size: 18px; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+.file-delete:hover { color: var(--red); background: var(--red-bg); }
+
+/* Text Preview */
+.text-preview { position: relative; margin-top: 12px; }
+.text-preview textarea { width: 100%; min-height: 180px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; line-height: 1.7; resize: vertical; outline: none; transition: border-color 0.2s; }
+.text-preview textarea:focus { border-color: var(--primary); }
+.preview-actions { position: absolute; top: 8px; right: 8px; }
+
+/* Collapsible */
+.collapsible { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.collapsible-header { padding: 10px 14px; background: var(--bg); cursor: pointer; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; user-select: none; }
+.collapsible-header:hover { background: #E2E8F0; }
+.collapsible-header .arrow { transition: transform 0.2s; }
+.collapsible-header.open .arrow { transform: rotate(180deg); }
+.collapsible-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.collapsible-body.open { max-height: 400px; }
+.collapsible-body textarea { width: 100%; min-height: 150px; border: none; padding: 12px; font-size: 13px; line-height: 1.7; resize: vertical; outline: none; }
+
+/* Progress */
+.progress-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+.progress-text { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Audio */
+.audio-wave { width: 100%; height: 60px; background: var(--bg); border-radius: var(--radius-sm); margin-top: 8px; }
+
+/* Action Bar */
+.action-bar { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 0; }
+.action-bar .btn { min-width: 100px; justify-content: center; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+.tab { padding: 10px 20px; font-size: 15px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* Report Cards */
+.report-card { animation: fadeInUp 0.4s ease both; }
+.report-card:nth-child(2) { animation-delay: 0.08s; }
+.report-card:nth-child(3) { animation-delay: 0.16s; }
+.report-card:nth-child(4) { animation-delay: 0.24s; }
+.report-card:nth-child(5) { animation-delay: 0.32s; }
+.report-card:nth-child(6) { animation-delay: 0.40s; }
+.report-card:nth-child(7) { animation-delay: 0.48s; }
+
+/* Score Gauge */
+.score-gauge { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 16px 0; }
+.gauge-circle { position: relative; width: 120px; height: 120px; }
+.gauge-circle svg { transform: rotate(-90deg); }
+.gauge-circle .score-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.gauge-circle .score-num { font-size: 32px; font-weight: 700; color: var(--primary); }
+.gauge-circle .score-label { font-size: 12px; color: var(--text-secondary); }
+
+/* Intent Bar */
+.intent-bar-container { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.intent-bar-track { flex: 1; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.intent-bar-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+.intent-bar-label { font-size: 13px; font-weight: 600; min-width: 50px; text-align: right; }
+
+/* Evidence */
+.evidence { font-size: 12px; color: var(--text-secondary); padding: 6px 10px; background: var(--bg); border-radius: 4px; margin: 4px 0; border-left: 3px solid var(--primary); }
+.evidence-label { font-weight: 600; }
+
+/* Accordion */
+.accordion-item { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+.accordion-header { padding: 12px 14px; background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 14px; user-select: none; }
+.accordion-header:hover { background: #E2E8F0; }
+.accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.accordion-body.open { max-height: 1000px; }
+.accordion-content { padding: 14px; font-size: 13px; line-height: 1.8; }
+
+/* Tags */
+.tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; margin: 2px 4px; }
+.tag-green { background: var(--green-bg); color: #065F46; }
+.tag-yellow { background: var(--yellow-bg); color: #92400E; }
+.tag-red { background: var(--red-bg); color: #991B1B; }
+.tag-blue { background: var(--primary-light); color: var(--primary); }
+
+/* Radar */
+.radar-container { display: flex; justify-content: center; padding: 16px 0; }
+
+/* Skeleton */
+.skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+.skeleton-line { height: 14px; margin-bottom: 8px; }
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w80 { width: 80%; }
+.skeleton-line.w100 { width: 100%; }
+.skeleton-block { height: 120px; margin-bottom: 12px; }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state-text { font-size: 15px; }
+
+/* Help Tooltip */
+.help-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); color: var(--text-secondary); font-size: 11px; cursor: pointer; font-weight: 600; }
+.help-icon:hover { background: var(--primary-light); color: var(--primary); }
+.help-tooltip { display: none; position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--text-secondary); box-shadow: var(--shadow-hover); z-index: 50; max-width: 280px; line-height: 1.6; }
+.help-tooltip.show { display: block; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: center; justify-content: center; animation: fadeIn 0.2s; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--card); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.2); max-width: 480px; width: 90%; animation: slideUp 0.3s ease; }
+.modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: space-between; }
+.modal-body { padding: 20px; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* History Drawer */
+.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; display: none; }
+.drawer-overlay.show { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 90vw; background: var(--card); box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 201; transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }
+.drawer.show { transform: translateX(0); }
+.drawer-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 16px; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+.drawer-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+
+/* History Item */
+.history-item { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+.history-item:hover { border-color: var(--primary); background: var(--primary-light); }
+.history-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.history-item-label { font-weight: 600; font-size: 14px; }
+.history-item-date { font-size: 11px; color: var(--text-secondary); }
+.history-item-summary { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-item-score { margin-top: 4px; }
+
+/* Audio Charts */
+.chart-section { margin: 16px 0; }
+.chart-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.chart-canvas { width: 100%; border-radius: var(--radius-sm); background: var(--bg); }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.timeline-item { position: relative; margin-bottom: 16px; }
+.timeline-item::before { content: ''; position: absolute; left: -20px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--card); }
+.timeline-item-content { font-size: 13px; line-height: 1.7; }
+
+/* Copy button */
+.copy-btn { padding: 3px 8px; font-size: 11px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; cursor: pointer; color: var(--text-secondary); }
+.copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+.copy-btn.copied { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+
+/* Print */
+.print-only { display: none; }
+@media print {
+  .header, .input-panel, .action-bar, .btn, .tabs, .help-icon, .copy-btn { display: none !important; }
+  .print-only { display: block !important; }
+  .report-panel { flex: none; width: 100%; }
+  .main { display: block; padding: 0; }
+  .card { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+  .report-card { animation: none !important; }
+  .accordion-body { max-height: none !important; }
+  .collapsible-body { max-height: none !important; }
+}
+
+/* Responsive */
+@media (max-width: 1023px) {
+  .main { flex-direction: column; padding: 12px; }
+  .tabs { overflow-x: auto; }
+  .tab { white-space: nowrap; }
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Sample data selector */
+.sample-dropdown { position: relative; display: inline-block; }
+.sample-menu { display: none; position: absolute; top: 100%; left: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-hover); z-index: 50; min-width: 260px; margin-top: 4px; }
+.sample-menu.show { display: block; }
+.sample-menu-item { padding: 10px 14px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); }
+.sample-menu-item:last-child { border-bottom: none; }
+.sample-menu-item:hover { background: var(--primary-light); }
+.sample-menu-item small { display: block; color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">言镜<span>1.0</span></div>
+    <span style="font-size:12px;color:var(--text-secondary)">教育行业智能沟通分析工具</span>
+  </div>
+  <div class="header-actions">
+    <div class="sample-dropdown">
+      <button class="btn" onclick="toggleSampleMenu()">📋 示例数据</button>
+      <div class="sample-menu" id="sampleMenu">
+        <div class="sample-menu-item" onclick="loadSample(1)">示例1：高意向家长<small>意向度8-9分，侧重促单</small></div>
+        <div class="sample-menu-item" onclick="loadSample(2)">示例2：犹豫型家长<small>意向度3-4分，侧重激活</small></div>
+        <div class="sample-menu-item" onclick="loadSample(3)">示例3：合规风险对话<small>多处违规表述</small></div>
+      </div>
+    </div>
+    <button class="btn" onclick="openHistory()">📚 历史记录</button>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main">
+  <!-- Input Panel -->
+  <div class="input-panel">
+    <!-- Text Upload Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">📄 文字记录上传</div>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="textUploadZone">
+          <input type="file" id="textFileInput" multiple accept=".txt,.csv,.docx,.xlsx,.jpg,.jpeg,.png">
+          <div class="upload-zone-icon">📂</div>
+          <div class="upload-zone-text">拖拽文件到此处或 <strong>点击上传</strong></div>
+          <div class="upload-formats">支持 .txt / .csv / .docx / .xlsx / .jpg / .png</div>
+        </div>
+        <div class="file-list" id="textFileList"></div>
+        <div class="text-preview" id="textPreviewSection" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">提取的文字内容（可编辑）</span>
+            <button class="btn btn-sm" onclick="clearTextPreview()">清空</button>
+          </div>
+          <textarea id="textContent" placeholder="上传文件后将自动提取文字内容，您也可以手动编辑修正..."></textarea>
+        </div>
+        <div class="collapsible">
+          <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <span>💬 或者直接粘贴文字</span>
+            <span class="arrow">▼</span>
+          </div>
+          <div class="collapsible-body" id="pasteBody">
+            <div style="position:relative">
+              <textarea id="pasteContent" placeholder="直接粘贴企微聊天记录..."></textarea>
+              <div style="position:absolute;top:8px;right:8px">
+                <button class="btn btn-sm" onclick="clearPasteContent()">清空</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Upload Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">🎙️ 录音文件上传</div>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="audioUploadZone">
+          <input type="file" id="audioFileInput" accept=".mp3,.wav,.m4a">
+          <div class="upload-zone-icon">🎵</div>
+          <div class="upload-zone-text">拖拽录音文件到此处或 <strong>点击上传</strong></div>
+          <div class="upload-formats">支持 .mp3 / .wav / .m4a</div>
+        </div>
+        <div class="file-list" id="audioFileList"></div>
+        <div id="audioSection" style="display:none">
+          <canvas id="audioWaveCanvas" class="audio-wave"></canvas>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary" id="transcribeBtn" onclick="startTranscribe()">开始转文字</button>
+            <select id="modelSelect" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+              <option value="tiny">标准模型 (tiny, ~75MB)</option>
+              <option value="small">高精度模型 (small, ~466MB)</option>
+            </select>
+            <button class="btn" id="retranscribeBtn" onclick="startTranscribe()" style="display:none">重新识别</button>
+          </div>
+          <div id="transcribeProgress" style="display:none;margin-top:10px">
+            <div class="progress-bar"><div class="progress-fill" id="transcribeFill" style="width:0%"></div></div>
+            <div class="progress-text" id="transcribeStatus">准备中...</div>
+          </div>
+          <div class="text-preview" id="audioTextPreview" style="display:none;margin-top:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">转文字结果（可编辑）</span>
+              <button class="btn btn-sm" onclick="clearAudioText()">清空</button>
+            </div>
+            <textarea id="audioTextContent" placeholder="语音识别结果将显示在这里..."></textarea>
+          </div>
+          <div id="audioFeatureSection" style="display:none;margin-top:14px">
+            <div style="font-size:14px;font-weight:600;margin-bottom:10px">📊 音频特征分析</div>
+            <div class="chart-section">
+              <div class="chart-title">🔊 音量变化曲线</div>
+              <canvas id="volumeChart" class="chart-canvas" height="100"></canvas>
+            </div>
+            <div class="chart-section">
+              <div class="chart-title">⏱️ 语速变化曲线</div>
+              <canvas id="speedChart" class="chart-canvas" height="100"></canvas>
+            </div>
+            <div class="chart-section">
+              <div class="chart-title">😊 情绪波动曲线</div>
+              <canvas id="emotionChart" class="chart-canvas" height="100"></canvas>
+            </div>
+            <div class="chart-section">
+              <div class="chart-title">🥧 参与度分布</div>
+              <canvas id="participationChart" class="chart-canvas" height="140"></canvas>
+            </div>
+            <div id="pauseTimeline" class="chart-section"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button class="btn btn-danger" onclick="clearAll()">清空所有</button>
+      <button class="btn btn-primary" onclick="startAnalysis()">🚀 开始分析</button>
+    </div>
+  </div>
+
+  <!-- Report Panel -->
+  <div class="report-panel" id="reportPanel">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(0)" id="tab0">📊 用户学情分析</button>
+      <button class="tab" onclick="switchTab(1)" id="tab1">🎯 销售能力分析</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="clearCurrentReport()">清空当前报告</button>
+      <button class="btn btn-sm" onclick="exportReport()">🖨️ 导出报告</button>
+      <button class="btn btn-sm" onclick="saveAnalysis()">💾 保存本次分析</button>
+    </div>
+    <div id="reportContent">
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-text">请先上传内容并点击"开始分析"</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- History Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeHistory()"></div>
+<div class="drawer" id="historyDrawer">
+  <div class="drawer-header">
+    <span>📚 历史记录</span>
+    <button class="btn-icon" onclick="closeHistory()" style="font-size:20px">✕</button>
+  </div>
+  <div class="drawer-body" id="historyList"></div>
+  <div class="drawer-footer">
+    <button class="btn btn-danger btn-sm" onclick="clearAllHistory()" style="width:100%">清空全部历史</button>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="confirmTitle">确认</span>
+      <button class="btn-icon" onclick="closeConfirm()" style="font-size:18px">✕</button>
+    </div>
+    <div class="modal-body" id="confirmBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="confirmAction()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>保存分析</span>
+      <button class="btn-icon" onclick="closeSaveModal()" style="font-size:18px">✕</button>
+    </div>
+    <div class="modal-body">
+      <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:6px">备注标签（便于查找）</label>
+      <input type="text" id="saveLabel" placeholder="如：王妈妈-20240115" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;outline:none">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSaveModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmSave()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Detail Modal -->
+<div class="modal-overlay" id="historyDetailModal">
+  <div class="modal" style="max-width:700px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <span id="historyDetailTitle">历史记录详情</span>
+      <button class="btn-icon" onclick="closeHistoryDetail()" style="font-size:18px">✕</button>
+    </div>
+    <div class="modal-body" id="historyDetailBody"></div>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+let uploadedTextFiles = [];
+let uploadedAudioFile = null;
+let audioBuffer = null;
+let transcriber = null;
+let currentTab = 0;
+let reportData = { report1: null, report2: null };
+let confirmCallback = null;
+
+// ===== Utils =====
+function $(id) { return document.getElementById(id); }
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Drag & Drop =====
+function setupDragDrop(zoneId, inputId, handler) {
+  const zone = $(zoneId);
+  const input = $(inputId);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); handler(e.dataTransfer.files); });
+  input.addEventListener('change', e => handler(e.target.files));
+}
+setupDragDrop('textUploadZone', 'textFileInput', handleTextFiles);
+setupDragDrop('audioUploadZone', 'audioFileInput', handleAudioFile);
+
+// ===== Text File Handling =====
+async function handleTextFiles(files) {
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const item = { name: file.name, size: file.size, ext, file, text: '' };
+    uploadedTextFiles.push(item);
+    renderTextFileList();
+    try {
+      if (ext === 'txt' || ext === 'csv') {
+        item.text = await readFileAsText(file);
+      } else if (ext === 'docx') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        item.text = result.value;
+      } else if (ext === 'xlsx') {
+        const arrayBuffer = await file.arrayBuffer();
+        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+        let text = '';
+        wb.SheetNames.forEach(name => {
+          const ws = wb.Sheets[name];
+          text += XLSX.utils.sheet_to_csv(ws) + '\n';
+        });
+        item.text = text;
+      } else if (['jpg','jpeg','png'].includes(ext)) {
+        item.text = await ocrImage(file);
+      }
+      updateTextPreview();
+    } catch(err) {
+      item.text = '[解析失败: ' + err.message + ']';
+      updateTextPreview();
+    }
+  }
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+async function ocrImage(file) {
+  const progressEl = document.createElement('div');
+  progressEl.innerHTML = '<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div><div class="progress-text">OCR识别中...</div>';
+  $('textFileList').appendChild(progressEl);
+  try {
+    const result = await Tesseract.recognize(file, 'chi_sim+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text' && m.progress) {
+          progressEl.querySelector('.progress-fill').style.width = (m.progress*100)+'%';
+          progressEl.querySelector('.progress-text').textContent = 'OCR识别中... ' + Math.round(m.progress*100) + '%';
+        }
+      }
+    });
+    progressEl.remove();
+    return result.data.text;
+  } catch(e) {
+    progressEl.remove();
+    return '[OCR识别失败: ' + e.message + ']';
+  }
+}
+
+function renderTextFileList() {
+  $('textFileList').innerHTML = uploadedTextFiles.map((f, i) => `
+    <div class="file-item" id="tf${i}">
+      <div class="file-icon">${getFileIcon(f.ext)}</div>
+      <div class="file-info">
+        <div class="file-name">${escapeHtml(f.name)}</div>
+        <div class="file-meta">${formatSize(f.size)} · .${f.ext}</div>
+      </div>
+      <button class="file-delete" onclick="removeTextFile(${i})">✕</button>
+    </div>
+  `).join('');
+  $('textPreviewSection').style.display = 'block';
+}
+
+function getFileIcon(ext) {
+  const icons = { txt:'📄', csv:'📊', docx:'📝', xlsx:'📈', jpg:'🖼️', jpeg:'🖼️', png:'🖼️' };
+  return icons[ext] || '📄';
+}
+
+function removeTextFile(idx) {
+  const el = $('tf'+idx);
+  el.classList.add('removing');
+  setTimeout(() => {
+    uploadedTextFiles.splice(idx, 1);
+    renderTextFileList();
+    updateTextPreview();
+    if (uploadedTextFiles.length === 0) $('textPreviewSection').style.display = 'none';
+  }, 300);
+}
+
+function updateTextPreview() {
+  $('textContent').value = uploadedTextFiles.map(f => f.text).filter(Boolean).join('\n\n---\n\n');
+}
+
+function clearTextPreview() { $('textContent').value = ''; }
+function clearPasteContent() { $('pasteContent').value = ''; }
+
+// ===== Collapsible =====
+function toggleCollapsible(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ===== Audio File Handling =====
+async function handleAudioFile(files) {
+  if (!files.length) return;
+  const file = files[0];
+  if (uploadedAudioFile) {
+    if (!confirm('已有录音文件，是否替换？')) return;
+  }
+  uploadedAudioFile = file;
+  $('audioFileList').innerHTML = `
+    <div class="file-item">
+      <div class="file-icon">🎵</div>
+      <div class="file-info">
+        <div class="file-name">${escapeHtml(file.name)}</div>
+        <div class="file-meta">${formatSize(file.size)}</div>
+      </div>
+      <button class="file-delete" onclick="removeAudioFile()">✕</button>
+    </div>`;
+  $('audioSection').style.display = 'block';
+  // Decode and draw waveform
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await file.arrayBuffer();
+    audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    drawWaveform(audioBuffer);
+  } catch(e) {
+    console.error('Audio decode error:', e);
+  }
+}
+
+function removeAudioFile() {
+  if (!confirm('确认删除该录音文件？删除后相关的转文字结果和音频分析将一并清除')) return;
+  uploadedAudioFile = null;
+  audioBuffer = null;
+  $('audioFileList').innerHTML = '';
+  $('audioSection').style.display = 'none';
+  $('audioTextPreview').style.display = 'none';
+  $('audioFeatureSection').style.display = 'none';
+  $('transcribeProgress').style.display = 'none';
+  $('retranscribeBtn').style.display = 'none';
+}
+
+function drawWaveform(buffer) {
+  const canvas = $('audioWaveCanvas');
+  const ctx = canvas.getContext('2d');
+  const data = buffer.getChannelData(0);
+  const w = canvas.width = canvas.offsetWidth * 2;
+  const h = canvas.height = 120;
+  ctx.clearRect(0, 0, w, h);
+  const step = Math.ceil(data.length / w);
+  ctx.fillStyle = '#4F46E5';
+  for (let i = 0; i < w; i++) {
+    let min = 1, max = -1;
+    for (let j = 0; j < step; j++) {
+      const d = data[i * step + j] || 0;
+      if (d < min) min = d;
+      if (d > max) max = d;
+    }
+    const y1 = (1 + min) * h / 2;
+    const y2 = (1 + max) * h / 2;
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(i, y1, 1, Math.max(1, y2 - y1));
+  }
+}
+
+// ===== Transcription =====
+let transformersLoaded = false;
+let transformersPipeline = null;
+
+/**
+ * 动态加载 transformers.js（通过 script 标签方式，最可靠）
+ * 尝试多个 CDN 源，加载后从全局变量中查找 pipeline 函数
+ */
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    // 先检查是否已加载
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.crossOrigin = 'anonymous';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('脚本加载失败: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadTransformers() {
+  if (transformersLoaded && transformersPipeline) return transformersPipeline;
+
+  const cdnUrls = [
+    'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js',
+    'https://unpkg.com/@xenova/transformers@2.17.2/dist/transformers.min.js',
+    'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0/dist/transformers.min.js',
+  ];
+
+  // 可能的全局变量名
+  const globalNames = ['transformers', 'Transformers', 'Xenova', 'HF'];
+
+  // 记录当前已有的全局属性，用于检测新加载的全局变量
+  const beforeGlobals = new Set(Object.keys(window));
+
+  let lastError = null;
+  for (const url of cdnUrls) {
+    try {
+      await loadScript(url);
+      // 等一小段时间让模块初始化
+      await new Promise(r => setTimeout(r, 200));
+
+      // 尝试从已知全局名中找 pipeline
+      for (const name of globalNames) {
+        const g = window[name];
+        if (g && typeof g.pipeline === 'function') {
+          transformersPipeline = g.pipeline;
+          transformersLoaded = true;
+          return transformersPipeline;
+        }
+      }
+
+      // 如果已知全局名都没找到，检查新出现的全局变量
+      const afterGlobals = Object.keys(window);
+      for (const key of afterGlobals) {
+        if (!beforeGlobals.has(key)) {
+          const g = window[key];
+          if (g && typeof g === 'object' && typeof g.pipeline === 'function') {
+            transformersPipeline = g.pipeline;
+            transformersLoaded = true;
+            return transformersPipeline;
+          }
+        }
+      }
+
+      throw new Error('脚本已加载但未找到 pipeline 函数');
+    } catch (e) {
+      lastError = e;
+      console.warn(`[言镜] 从 ${url} 加载失败:`, e.message);
+      // 移除失败的 script 标签
+      const failedScript = document.querySelector(`script[src="${url}"]`);
+      if (failedScript) failedScript.remove();
+    }
+  }
+
+  throw new Error('所有 CDN 源均加载失败，请检查网络连接后刷新页面重试。错误: ' + (lastError ? lastError.message : '未知'));
+}
+
+async function startTranscribe() {
+  if (!uploadedAudioFile) return;
+  const model = $('modelSelect').value;
+  const modelName = model === 'tiny' ? 'Xenova/whisper-tiny' : 'Xenova/whisper-small';
+  $('transcribeProgress').style.display = 'block';
+  $('transcribeBtn').disabled = true;
+  $('transcribeStatus').textContent = '正在加载 Transformers.js 库...';
+  $('transcribeFill').style.width = '5%';
+
+  try {
+    // 1. 动态加载库
+    const pipelineFn = await loadTransformers();
+    $('transcribeStatus').textContent = '库加载完成，正在加载 Whisper 语音模型...';
+    $('transcribeFill').style.width = '15%';
+
+    // 2. 加载模型
+    if (!transcriber || transcriber.modelName !== modelName) {
+      transcriber = await pipelineFn('automatic-speech-recognition', modelName, {
+        progress_callback: (data) => {
+          if (data.status === 'progress') {
+            const pct = Math.min(60, 15 + (data.progress || 0) * 45);
+            $('transcribeFill').style.width = pct + '%';
+            $('transcribeStatus').textContent = `模型下载中... ${data.progress ? Math.round(data.progress)+'%' : '首次加载约需1-2分钟，模型会缓存到浏览器'}`;
+          } else if (data.status === 'ready') {
+            $('transcribeStatus').textContent = '模型加载完成，开始识别...';
+            $('transcribeFill').style.width = '60%';
+          }
+        }
+      });
+      transcriber.modelName = modelName;
+    }
+
+    $('transcribeStatus').textContent = '正在识别...';
+    $('transcribeFill').style.width = '70%';
+
+    // 3. 执行语音识别
+    const audioData = audioBuffer.getChannelData(0);
+    const result = await transcriber(audioData, { chunk_length_s: 30, stride_length_s: 5 });
+
+    $('transcribeFill').style.width = '100%';
+    $('transcribeStatus').textContent = '识别完成';
+
+    let text = '';
+    if (Array.isArray(result)) {
+      text = result.map(r => r.text).join('\n');
+    } else {
+      text = result.text || '';
+    }
+
+    $('audioTextContent').value = text;
+    $('audioTextPreview').style.display = 'block';
+    $('retranscribeBtn').style.display = 'inline-flex';
+
+    // Run audio feature analysis
+    analyzeAudioFeatures();
+  } catch(e) {
+    $('transcribeStatus').textContent = '识别失败: ' + e.message;
+    $('transcribeFill').style.width = '0%';
+    console.error('[言镜] 语音识别错误:', e);
+  }
+  $('transcribeBtn').disabled = false;
+}
+
+function clearAudioText() { $('audioTextContent').value = ''; }
+
+// ===== Audio Feature Analysis =====
+function analyzeAudioFeatures() {
+  if (!audioBuffer) return;
+  $('audioFeatureSection').style.display = 'block';
+
+  const data = audioBuffer.getChannelData(0);
+  const sampleRate = audioBuffer.sampleRate;
+  const duration = audioBuffer.duration;
+  const segmentSec = 2;
+  const segSamples = Math.floor(sampleRate * segmentSec);
+  const numSegs = Math.floor(data.length / segSamples);
+
+  // Volume RMS per segment
+  const volumes = [];
+  for (let i = 0; i < numSegs; i++) {
+    let sum = 0;
+    for (let j = 0; j < segSamples; j++) {
+      const s = data[i * segSamples + j];
+      sum += s * s;
+    }
+    volumes.push(Math.sqrt(sum / segSamples));
+  }
+  const maxVol = Math.max(...volumes, 0.001);
+
+  // Simulated speed (speech rate proxy via zero-crossing rate)
+  const speeds = [];
+  for (let i = 0; i < numSegs; i++) {
+    let crossings = 0;
+    for (let j = 1; j < segSamples; j++) {
+      if ((data[i*segSamples+j] >= 0) !== (data[i*segSamples+j-1] >= 0)) crossings++;
+    }
+    // Approximate words/min from zero-crossing rate
+    speeds.push(Math.round(80 + crossings / segSamples * 4000));
+  }
+
+  // Emotion curve (combine volume + speed)
+  const avgSpeed = speeds.reduce((a,b)=>a+b,0)/speeds.length;
+  const emotions = volumes.map((v, i) => {
+    const volNorm = v / maxVol;
+    const speedNorm = speeds[i] / (avgSpeed || 1);
+    return Math.min(1, Math.max(0, (volNorm * 0.5 + speedNorm * 0.3 + 0.2)));
+  });
+
+  // Pauses (silence detection)
+  const silenceThreshold = maxVol * 0.05;
+  const pauses = [];
+  let inPause = false, pauseStart = 0;
+  for (let i = 0; i < numSegs; i++) {
+    if (volumes[i] < silenceThreshold) {
+      if (!inPause) { inPause = true; pauseStart = i * segmentSec; }
+    } else {
+      if (inPause) {
+        const dur = i * segmentSec - pauseStart;
+        if (dur >= 2) pauses.push({ start: pauseStart, duration: dur });
+        inPause = false;
+      }
+    }
+  }
+
+  // Participation (simple volume-based split)
+  const totalVol = volumes.reduce((a,b)=>a+b,0);
+  const highThresh = maxVol * 0.5;
+  let salesVol = 0, parentVol = 0;
+  volumes.forEach((v, i) => {
+    if (i % 2 === 0) salesVol += v; else parentVol += v;
+  });
+  const salesPct = totalVol > 0 ? Math.round(salesVol / totalVol * 100) : 50;
+
+  drawLineChart($('volumeChart'), volumes.map(v => (v/maxVol).toFixed(2)), '音量', '#4F46E5');
+  drawLineChart($('speedChart'), speeds, '语速 (字/分)', '#10B981');
+  drawLineChart($('emotionChart'), emotions.map(e => e.toFixed(2)), '情绪强度', '#F59E0B');
+  drawPieChart($('participationChart'), [
+    { label: '销售', value: salesPct, color: '#4F46E5' },
+    { label: '家长', value: 100 - salesPct, color: '#10B981' }
+  ]);
+
+  // Pause timeline
+  if (pauses.length > 0) {
+    $('pauseTimeline').innerHTML = `
+      <div class="chart-title">⏸️ 关键停顿 (${pauses.length}次)</div>
+      ${pauses.map(p => `<div style="font-size:12px;color:var(--text-secondary);padding:4px 0">
+        ${formatTime(p.start)} - ${formatTime(p.start + p.duration)} (${p.duration.toFixed(1)}秒)
+      </div>`).join('')}`;
+  }
+}
+
+function formatTime(s) {
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function drawLineChart(canvas, data, label, color) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth * 2;
+  const h = canvas.height = 200;
+  const pad = 40;
+  ctx.clearRect(0, 0, w, h);
+  if (!data.length) return;
+  const vals = data.map(Number);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals) || 1;
+  const range = max - min || 1;
+
+  // Axes
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, 10); ctx.lineTo(pad, h-pad); ctx.lineTo(w-10, h-pad); ctx.stroke();
+
+  // Line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  vals.forEach((v, i) => {
+    const x = pad + (i / (vals.length-1)) * (w - pad - 10);
+    const y = h - pad - ((v - min) / range) * (h - pad - 20);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = color;
+  ctx.lineTo(pad + (w - pad - 10), h - pad);
+  ctx.lineTo(pad, h - pad);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Labels
+  ctx.fillStyle = '#64748B';
+  ctx.font = '20px sans-serif';
+  ctx.fillText(label, pad, h - 8);
+  ctx.fillText(min.toFixed(0), 2, h - pad);
+  ctx.fillText(max.toFixed(0), 2, 24);
+}
+
+function drawPieChart(canvas, slices) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.offsetWidth * 2;
+  const h = canvas.height = 280;
+  const cx = w / 2, cy = h / 2 - 10, r = 80;
+  ctx.clearRect(0, 0, w, h);
+
+  let startAngle = -Math.PI / 2;
+  const total = slices.reduce((a, s) => a + s.value, 0) || 1;
+  slices.forEach(s => {
+    const angle = (s.value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + angle);
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    // Label
+    const mid = startAngle + angle / 2;
+    const lx = cx + Math.cos(mid) * (r + 24);
+    const ly = cy + Math.sin(mid) * (r + 24);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${s.label} ${s.value}%`, lx, ly);
+    startAngle += angle;
+  });
+}
+
+// ===== Analysis Engine =====
+function getFullText() {
+  const textVal = $('textContent').value.trim();
+  const pasteVal = $('pasteContent').value.trim();
+  const audioVal = $('audioTextContent') ? $('audioTextContent').value.trim() : '';
+  return [textVal, pasteVal, audioVal].filter(Boolean).join('\n\n');
+}
+
+function startAnalysis() {
+  const text = getFullText();
+  if (!text) {
+    showNotification('请先上传文件或粘贴聊天记录');
+    return;
+  }
+  showSkeleton();
+  setTimeout(() => {
+    const r1 = analyzeReport1(text);
+    const r2 = analyzeReport2(text);
+    reportData = { report1: r1, report2: r2 };
+    renderReport();
+  }, 1500);
+}
+
+function showNotification(msg) {
+  const n = document.createElement('div');
+  n.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0F172A;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:300;animation:fadeIn 0.3s';
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 2500);
+}
+
+function showSkeleton() {
+  $('reportContent').innerHTML = `
+    <div class="card report-card"><div class="card-body">
+      <div class="skeleton skeleton-line w60"></div>
+      <div class="skeleton skeleton-line w100"></div>
+      <div class="skeleton skeleton-line w80"></div>
+      <div class="skeleton skeleton-block"></div>
+      <div class="skeleton skeleton-line w100"></div>
+      <div class="skeleton skeleton-line w60"></div>
+    </div></div>
+    <div class="card report-card"><div class="card-body">
+      <div class="skeleton skeleton-line w80"></div>
+      <div class="skeleton skeleton-block"></div>
+      <div class="skeleton skeleton-line w100"></div>
+      <div class="skeleton skeleton-line w60"></div>
+    </div></div>`;
+}
+
+// ===== Analysis Report 1: User Situation =====
+function analyzeReport1(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const fullText = lines.join('\n');
+
+  // 1. Dialogue overview
+  const dialogueTurns = countTurns(lines);
+  const speakerRatio = calcSpeakerRatio(lines);
+
+  // 2. User profile
+  const grade = extractGrade(fullText);
+  const subjects = extractSubjects(fullText);
+  const painPoints = extractPainPoints(fullText);
+  const parentType = extractParentType(fullText);
+  const priceSensitivity = extractPriceSensitivity(fullText);
+  const decisionRole = extractDecisionRole(fullText);
+
+  // 3. Intent scoring
+  const intentSignals = scoreIntent(fullText);
+  const intentScore = Math.min(10, Math.max(1, 5 + intentSignals.score));
+
+  // 4. Key info
+  const keyInfo = extractKeyInfo(fullText);
+
+  // 5. Emotion & risks
+  const emotions = detectEmotions(fullText);
+  const risks = detectRisks(fullText);
+  const compliance = checkCompliance(fullText);
+
+  // 6. Follow-up
+  const followUp = generateFollowUp(fullText, intentScore);
+
+  // 7. Scripts
+  const scripts = generateScripts(fullText, painPoints, intentScore);
+
+  return {
+    dialogueTurns, speakerRatio, grade, subjects, painPoints, parentType,
+    priceSensitivity, decisionRole, intentScore, intentSignals, keyInfo,
+    emotions, risks, compliance, followUp, scripts
+  };
+}
+
+function countTurns(lines) {
+  let turns = 0;
+  let lastSpeaker = '';
+  lines.forEach(l => {
+    const match = l.match(/^(销售|家长|班主任|顾问|老师|我|对方|A|B|用户|客服)[：:]\s*/);
+    if (match && match[1] !== lastSpeaker) { turns++; lastSpeaker = match[1]; }
+  });
+  return Math.max(turns, Math.floor(lines.length / 2));
+}
+
+function calcSpeakerRatio(lines) {
+  let sales = 0, parent = 0;
+  lines.forEach(l => {
+    if (/^(销售|班主任|顾问|老师|我|A|客服)[：:]/.test(l)) sales++;
+    else if (/^(家长|对方|B|用户)[：:]/.test(l)) parent++;
+    else { sales++; } // default
+  });
+  const total = sales + parent || 1;
+  return { sales: Math.round(sales/total*100), parent: Math.round(parent/total*100) };
+}
+
+function extractGrade(text) {
+  const gradePatterns = [
+    /([一二三四五六七八九十初高小]+年级)/,
+    /([小初高][一二三])/,
+    /(小学|初中|高中|学前|幼儿园)/,
+    /年级[是为在]?(.*?)[\s,，。]/,
+    /(几年级)/,
+  ];
+  for (const p of gradePatterns) {
+    const m = text.match(p);
+    if (m) return m[1] || m[0];
+  }
+  return '未提及';
+}
+
+function extractSubjects(text) {
+  const subjects = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治', '奥数', '编程', '美术', '音乐'];
+  const found = subjects.filter(s => text.includes(s));
+  return found.length ? found.join('、') : '未提及';
+}
+
+function extractPainPoints(text) {
+  const painMap = {
+    '成绩下滑': [/成绩.*?下降/, /分数.*?降/, /退步/, /越来越差/, /跟不上/],
+    '学习习惯差': [/磨蹭/, /拖拉/, /不专心/, /注意力.*?差/, /坐不住/, /作业.*?慢/],
+    '缺乏兴趣': [/不想学/, /没兴趣/, /厌学/, /不爱学/, /抵触/],
+    '跟不上进度': [/跟不上/, /听不懂/, /基础.*?差/, /落下了/],
+    '粗心大意': [/粗心/, /马虎/, /不仔细/, /看错/],
+    '时间管理差': [/时间.*?管理/, /不会安排/, /效率.*?低/],
+  };
+  const found = [];
+  for (const [point, patterns] of Object.entries(painMap)) {
+    for (const p of patterns) {
+      if (p.test(text)) { found.push(point); break; }
+    }
+  }
+  return found.length ? found : ['未提及'];
+}
+
+function extractParentType(text) {
+  const types = {
+    '焦虑型': [/担心/, /焦虑/, /着急/, /怎么办/, /急死了/, /焦虑/],
+    '理性型': [/对比/, /比较/, /数据/, /效果/, /具体/, /请问.*?区别/],
+    '犹豫型': [/再想想/, /考虑/, /商量/, /再说/, /不确定/],
+    '随和型': [/都行/, /还好/, /可以/, /没问题/, /听你们的/],
+  };
+  for (const [type, patterns] of Object.entries(types)) {
+    for (const p of patterns) {
+      if (p.test(text)) return type;
+    }
+  }
+  return '未提及';
+}
+
+function extractPriceSensitivity(text) {
+  const priceWords = /价格|多少钱|费用|优惠|打折|便宜|贵|学费|报名费/;
+  const matches = text.match(new RegExp(priceWords, 'g'));
+  const count = matches ? matches.length : 0;
+  if (count >= 3) return { level: '高', pct: 90 };
+  if (count >= 1) return { level: '中', pct: 50 };
+  return { level: '未提及', pct: 0 };
+}
+
+function extractDecisionRole(text) {
+  if (/爸爸|爸爸说|老公/.test(text)) return '爸爸参与决策';
+  if (/妈妈.*?决定|我做主|我来定/.test(text)) return '妈妈主导';
+  if (/孩子.*?喜欢|孩子.*?想/.test(text)) return '尊重孩子意愿';
+  if (/商量|一起/.test(text)) return '全家商量';
+  return '未提及';
+}
+
+function scoreIntent(text) {
+  const highSignals = [
+    { p: /想报名|想试试|想报/, label: '主动表达报名意向', quote: null },
+    { p: /价格.*?多少|多少钱|怎么收费/, label: '主动询问价格', quote: null },
+    { p: /什么时候.*?上课|课程安排|上课时间/, label: '主动询问课程安排', quote: null },
+    { p: /退费/, label: '询问退费政策', quote: null },
+    { p: /下次.*?联系|什么时候.*?方便/, label: '主动约定联系时间', quote: null },
+    { p: /商量后.*?报|决定.*?报/, label: '表示商量后报名', quote: null },
+  ];
+  const midSignals = [
+    { p: /孩子.*?成绩|孩子.*?学习/, label: '表达明确需求', quote: null },
+    { p: /了解一下|介绍|详细/, label: '有兴趣追问细节', quote: null },
+    { p: /资料|发.*?我/, label: '愿意接收资料', quote: null },
+  ];
+  const lowSignals = [
+    { p: /暂时不需要|不需要/, label: '明确表示暂时不需要', quote: null },
+    { p: /其他机构|已经在.*?学/, label: '已在其他机构', quote: null },
+    { p: /太贵|负担不起/, label: '表示价格太贵', quote: null },
+    { p: /再说吧|以后再说/, label: '敷衍推脱', quote: null },
+  ];
+
+  // Extract quotes for signals
+  const lines = text.split('\n');
+  function findQuote(pattern) {
+    for (const line of lines) {
+      if (pattern.test(line)) return line.substring(0, 80);
+    }
+    return null;
+  }
+
+  let score = 0;
+  const found = { high: [], mid: [], low: [] };
+
+  highSignals.forEach(s => {
+    if (s.p.test(text)) {
+      s.quote = findQuote(s.p);
+      found.high.push(s);
+      score += 2;
+    }
+  });
+  midSignals.forEach(s => {
+    if (s.p.test(text)) {
+      s.quote = findQuote(s.p);
+      found.mid.push(s);
+      score += 1;
+    }
+  });
+  lowSignals.forEach(s => {
+    if (s.p.test(text)) {
+      s.quote = findQuote(s.p);
+      found.low.push(s);
+      score -= 1;
+    }
+  });
+
+  return { score, signals: found };
+}
+
+function extractKeyInfo(text) {
+  const info = { academic: [], timeline: [], implicit: [], agreements: [] };
+  const lines = text.split('\n');
+
+  // Academic info
+  const academicPatterns = [/(\d+分)/, /(第\d+名)/, /(排名)/, /(考试)/];
+  lines.forEach(l => {
+    academicPatterns.forEach(p => {
+      if (p.test(l)) info.academic.push(l.substring(0, 80));
+    });
+  });
+
+  // Timeline
+  const timePatterns = [/考试/, /假期/, /试听/, /下周/, /明天/];
+  lines.forEach(l => {
+    timePatterns.forEach(p => {
+      if (p.test(l)) info.timeline.push(l.substring(0, 80));
+    });
+  });
+
+  // Implicit needs
+  if (/磨蹭.*?11点|作业.*?慢/.test(text)) info.implicit.push('学习习惯管理（作业拖拉到深夜）');
+  if (/不想学|没兴趣/.test(text)) info.implicit.push('学习动力激发');
+  if (/跟不上|听不懂/.test(text)) info.implicit.push('基础补强需求');
+
+  // Agreements
+  lines.forEach(l => {
+    if (/下次.*?联系|试听|发.*?资料|约定/.test(l)) {
+      info.agreements.push(l.substring(0, 80));
+    }
+  });
+
+  // Defaults
+  if (!info.academic.length) info.academic.push('未提及');
+  if (!info.timeline.length) info.timeline.push('未提及');
+  if (!info.implicit.length) info.implicit.push('信息不足，建议了解更多后补充');
+  if (!info.agreements.length) info.agreements.push('未提及');
+
+  return info;
+}
+
+function detectEmotions(text) {
+  const positiveWords = /好|可以|不错|满意|谢谢|感谢|好的/;
+  const negativeWords = /担心|焦虑|贵|不行|不好|失望|生气|不满/;
+  const pos = (text.match(new RegExp(positiveWords, 'g')) || []).length;
+  const neg = (text.match(new RegExp(negativeWords, 'g')) || []).length;
+  let overall = '中性';
+  if (pos > neg + 2) overall = '积极';
+  else if (neg > pos + 2) overall = '消极/担忧';
+  return { overall, textBased: overall, audioBased: audioBuffer ? '基于音频特征分析' : '未上传录音', combined: overall };
+}
+
+function detectRisks(text) {
+  const risks = [];
+  if (/其他.*?机构|别家|对比/.test(text)) risks.push('提及竞品：家长可能在多家机构之间比较');
+  if (/贵|价格|费用.*?高/.test(text)) risks.push('价格异议：家长对价格有顾虑');
+  if (/再想想|考虑|商量/.test(text)) risks.push('犹豫信号：家长需要更多时间考虑');
+  if (!risks.length) risks.push('未发现明显风险点');
+  return risks;
+}
+
+function checkCompliance(text) {
+  const violations = [];
+  const rules = [
+    { p: /保证.*?提分|guaranteed/i, label: '绝对化/保证性用语' },
+    { p: /最好|第一|唯一/, label: '绝对化用语（最好/第一/唯一）' },
+    { p: /随时退|全额退/, label: '过度承诺退费' },
+    { p: /100%|百分之百/, label: '绝对化表述' },
+  ];
+  rules.forEach(r => {
+    const m = text.match(r.p);
+    if (m) {
+      const idx = text.indexOf(m[0]);
+      const context = text.substring(Math.max(0, idx-20), idx+m[0].length+20);
+      violations.push({ label: r.label, context: '...' + context + '...' });
+    }
+  });
+  if (!violations.length) violations.push({ label: '无违规', context: '对话内容合规' });
+  return violations;
+}
+
+function generateFollowUp(text, intentScore) {
+  let urgency = '一般';
+  let color = '#F59E0B';
+  if (intentScore >= 7) { urgency = '紧急'; color = '#EF4444'; }
+  else if (intentScore <= 4) { urgency = '可缓'; color = '#10B981'; }
+
+  let method = '企微消息';
+  let time = '建议24小时内跟进';
+  if (/试听/.test(text)) { method = '确认试听安排'; time = '尽快确认'; }
+  else if (/资料/.test(text)) { method = '发送相关资料'; time = '当天发送'; }
+  else if (/考虑/.test(text)) { method = '电话跟进'; time = '2-3天后'; }
+
+  return { urgency, color, method, time, reason: intentScore >= 7 ? '家长意向度高，应抓住时机推进' : '需要持续培育意向' };
+}
+
+function generateScripts(text, painPoints, intentScore) {
+  const has = (kw) => text.includes(kw);
+  return {
+    opening: has('上次')
+      ? `您好，上次和您聊了孩子的情况，最近孩子学习状态怎么样？有没有什么变化？`
+      : `您好，之前了解到您对孩子的学习比较关注，方便聊几句吗？`,
+    painDeep: painPoints.includes('未提及')
+      ? ['建议先了解：孩子目前在哪个年级？哪些科目比较薄弱？', '可以问：孩子平时做作业大概需要多长时间？']
+      : [
+        `您之前提到孩子${painPoints[0]}的问题，能具体说说是从什么时候开始的吗？`,
+        `这种情况对孩子整体学习影响大吗？老师有没有反馈过？`
+      ],
+    productMatch: painPoints.includes('未提及')
+      ? '信息不足，建议先了解更多家长需求后再推荐课程'
+      : `针对${painPoints[0]}的问题，我们有针对性的课程可以帮助改善，主要是通过...`,
+    objection: has('贵')
+      ? ['理解您的顾虑。其实算下来一节课也就XX元，比请家教划算很多。而且我们有分期方案。']
+      : ['如果家长说"再考虑考虑"：完全理解，您可以先试听一节课感受一下，不着急决定。'],
+    closing: intentScore >= 7
+      ? ['今天可以先帮您预约一节试听课，您看周几方便？', '现在报名有早鸟优惠，我可以先帮您保留名额。']
+      : ['建议先发一些学习资料给家长，下周再跟进。', '可以邀请参加一次免费的家长讲座。']
+  };
+}
+
+// ===== Analysis Report 2: Sales Ability =====
+function analyzeReport2(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Extract sales lines
+  const salesLines = lines.filter(l => /^(销售|班主任|顾问|老师|我|A|客服)[：:]/.test(l));
+  const parentLines = lines.filter(l => /^(家长|对方|B|用户)[：:]/.test(l));
+  const allSalesText = salesLines.join('\n');
+
+  // Count questions
+  const questionCount = (allSalesText.match(/[？?]/g) || []).length;
+
+  // Dimensions
+  const needDig = scoreNeedDigging(questionCount, salesLines);
+  const productMatch = scoreProductMatch(text, salesLines);
+  const objectionHandling = scoreObjectionHandling(text, salesLines, parentLines);
+  const closing = scoreClosingAbility(text, salesLines);
+  const compliance = scoreCompliance(allSalesText);
+
+  const avgScore = Math.round((needDig.score + productMatch.score + objectionHandling.score + closing.score + compliance.score) / 5);
+
+  // Timeline
+  const timeline = buildTimeline(lines);
+
+  // Good phrases
+  const goodPhrases = extractGoodPhrases(salesLines);
+
+  // Improvement items
+  const improvements = buildImprovements(needDig, productMatch, objectionHandling, closing, compliance);
+
+  return { avgScore, needDig, productMatch, objectionHandling, closing, compliance, timeline, goodPhrases, improvements };
+}
+
+function scoreNeedDigging(qCount, salesLines) {
+  let score = 1;
+  if (qCount >= 5) score = 10;
+  else if (qCount >= 3) score = 7;
+  else if (qCount >= 1) score = 4;
+
+  const good = [], bad = [];
+  const qLines = salesLines.filter(l => /[？?]/.test(l));
+  if (qLines.length) good.push('主动提问了' + qLines.length + '次');
+  else bad.push('几乎没有主动提问，一直在自说自话');
+
+  // Check coverage
+  const allText = salesLines.join('\n');
+  const dimensions = { '年级': /年级/, '学科': /数学|语文|英语/, '痛点': /成绩|习惯|跟不上/, '预算': /价格|费用/, '时间': /什么时候|时间/ };
+  let covered = 0;
+  for (const [dim, p] of Object.entries(dimensions)) {
+    if (p.test(allText)) covered++;
+  }
+  if (covered >= 4) good.push('覆盖了' + covered + '个关键维度');
+  else bad.push('关键维度覆盖不足（仅' + covered + '/5）');
+
+  return { score, good, bad, suggest: score < 7 ? '建议多提问了解家长需求，至少覆盖年级、学科、痛点、时间、预算五个维度' : '需求挖掘做得不错' };
+}
+
+function scoreProductMatch(text, salesLines) {
+  const allText = salesLines.join('\n');
+  let score = 1;
+  const good = [], bad = [];
+
+  const hasRecommend = /推荐|适合|这个课程|我们有/.test(allText);
+  const hasReason = /因为|针对|所以/.test(allText);
+
+  if (hasRecommend && hasReason) { score = 10; good.push('推荐课程并说明了匹配原因'); }
+  else if (hasRecommend) { score = 7; good.push('推荐了课程但匹配原因说明不够充分'); }
+  else { score = 3; bad.push('没有针对性推荐课程'); }
+
+  return { score, good, bad, suggest: score < 7 ? '建议根据家长痛点推荐对应课程，并说明为什么适合' : '产品匹配能力良好' };
+}
+
+function scoreObjectionHandling(text, salesLines, parentLines) {
+  const allParent = parentLines.join('\n');
+  const allSales = salesLines.join('\n');
+  let score = 7;
+  const good = [], bad = [];
+
+  const hasObjection = /贵|担心|犹豫|考虑|其他/.test(allParent);
+  const hasResponse = /理解|但是|其实|我们可以/.test(allSales);
+
+  if (hasObjection && hasResponse) { score = 9; good.push('对家长的异议做出了回应'); }
+  else if (hasObjection && !hasResponse) { score = 4; bad.push('家长有异议但未有效回应'); }
+  else { score = 7; good.push('对话中未出现明显异议'); }
+
+  return { score, good, bad, suggest: score < 7 ? '当家长提出顾虑时，先共情再给方案，不要急于反驳' : '异议处理到位' };
+}
+
+function scoreClosingAbility(text, salesLines) {
+  const allText = salesLines.join('\n');
+  let score = 1;
+  const good = [], bad = [];
+
+  if (/试听|预约|安排/.test(allText)) { score = 10; good.push('有明确的下一步（试听安排）'); }
+  else if (/下次|联系|资料/.test(allText)) { score = 7; good.push('有下一步但不够具体'); }
+  else { score = 3; bad.push('没有推动明确的下一步动作'); }
+
+  return { score, good, bad, suggest: score < 7 ? '对话结束前一定要约定明确的下一步：试听/发资料/下次联系时间' : '促单推进能力良好' };
+}
+
+function scoreCompliance(text) {
+  let score = 10;
+  const good = [], bad = [];
+  const violations = [];
+  if (/保证|guaranteed/i.test(text)) { score -= 3; violations.push('保证性用语'); }
+  if (/最好|第一|唯一/.test(text)) { score -= 2; violations.push('绝对化用语'); }
+  if (/随时退|全额退/.test(text)) { score -= 2; violations.push('过度承诺退费'); }
+
+  if (violations.length) {
+    bad.push('存在违规表述：' + violations.join('、'));
+  } else {
+    good.push('全程合规，语气得当');
+  }
+  score = Math.max(1, score);
+  return { score, good, bad, suggest: violations.length ? '注意避免使用绝对化用语和过度承诺，如"保证提分""随时退"等' : '沟通规范性良好' };
+}
+
+function buildTimeline(lines) {
+  const stages = [];
+  const text = lines.join('\n');
+
+  if (/你好|您好|在吗/.test(text)) stages.push({ stage: '开场寒暄', desc: '建立联系，破冰' });
+  if (/年级|几年级|孩子.*?上/.test(text)) stages.push({ stage: '需求了解', desc: '了解孩子基本情况' });
+  if (/成绩|分数|排名/.test(text)) stages.push({ stage: '痛点挖掘', desc: '深入了解学习问题' });
+  if (/课程|我们|推荐/.test(text)) stages.push({ stage: '产品介绍', desc: '介绍课程和优势' });
+  if (/贵|价格|担心/.test(text)) stages.push({ stage: '异议处理', desc: '回应家长顾虑' });
+  if (/试听|报名|安排|下次/.test(text)) stages.push({ stage: '促单推进', desc: '推动下一步行动' });
+
+  if (!stages.length) stages.push({ stage: '待分析', desc: '对话内容较少，无法明确判断阶段' });
+  return stages;
+}
+
+function extractGoodPhrases(salesLines) {
+  const good = [];
+  salesLines.forEach(l => {
+    const text = l.replace(/^(销售|班主任|顾问|老师|我|A|客服)[：:]\s*/, '');
+    if (/理解|明白|确实/.test(text) && text.length > 15) {
+      good.push({ phrase: text.substring(0, 80), reason: '先共情再回应，沟通节奏好' });
+    }
+    if (/建议|推荐/.test(text) && /因为|针对/.test(text)) {
+      good.push({ phrase: text.substring(0, 80), reason: '推荐时说明原因，有说服力' });
+    }
+  });
+  if (!good.length) good.push({ phrase: '（暂未发现特别优秀的话术）', reason: '建议多运用共情+推荐的组合话术' });
+  return good;
+}
+
+function buildImprovements(needDig, productMatch, objectionHandling, closing, compliance) {
+  const items = [];
+  if (needDig.score < 7) items.push({ title: '加强需求挖掘', desc: needDig.suggest, example: '多问开放式问题：孩子目前哪些科目比较薄弱？平时做作业习惯怎么样？' });
+  if (productMatch.score < 7) items.push({ title: '提升产品匹配', desc: productMatch.suggest, example: '推荐时说：针对孩子数学基础薄弱的情况，我们的XX课程正好是打基础的...' });
+  if (objectionHandling.score < 7) items.push({ title: '改善异议处理', desc: objectionHandling.suggest, example: '先共情：理解您的顾虑，再方案：其实我们可以先试听一节感受一下' });
+  if (closing.score < 7) items.push({ title: '推动明确下一步', desc: closing.suggest, example: '结尾时说：这周四或周五，您哪天方便带孩子来试听？我帮您预约' });
+  if (compliance.score < 8) items.push({ title: '注意合规表述', desc: compliance.suggest, example: '避免说"保证提高XX分"，可以说"很多孩子在这里学习后都有明显进步"' });
+  if (!items.length) items.push({ title: '继续保持', desc: '整体沟通质量不错，继续保持当前的沟通方式', example: '' });
+  return items;
+}
+
+// ===== Render Report =====
+function renderReport() {
+  if (currentTab === 0) renderReport1();
+  else renderReport2();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  $('tab0').classList.toggle('active', tab === 0);
+  $('tab1').classList.toggle('active', tab === 1);
+  if (reportData.report1 || reportData.report2) renderReport();
+}
+
+function renderReport1() {
+  const r = reportData.report1;
+  if (!r) { $('reportContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">请先分析后查看报告</div></div>'; return; }
+
+  const intentColor = r.intentScore >= 7 ? 'var(--green)' : r.intentScore >= 5 ? 'var(--yellow)' : 'var(--red)';
+
+  let html = '';
+
+  // 1. Dialogue Overview
+  html += card('📋 对话概览', `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><span style="color:var(--text-secondary);font-size:13px">对话轮次</span><div style="font-size:20px;font-weight:700">${r.dialogueTurns}</div></div>
+      <div><span style="color:var(--text-secondary);font-size:13px">活跃度</span><div style="font-size:20px;font-weight:700">${r.dialogueTurns > 10 ? '高' : r.dialogueTurns > 5 ? '中' : '低'}</div></div>
+    </div>
+    <div style="margin-top:12px">
+      <span style="color:var(--text-secondary);font-size:13px">双方发言比例</span>
+      <div style="display:flex;height:24px;border-radius:4px;overflow:hidden;margin-top:6px">
+        <div style="width:${r.speakerRatio.sales}%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">销售 ${r.speakerRatio.sales}%</div>
+        <div style="width:${r.speakerRatio.parent}%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">家长 ${r.speakerRatio.parent}%</div>
+      </div>
+    </div>
+  `, '对话轮次统计、双方发言比例、对话活跃度评分');
+
+  // 2. User Profile
+  html += card('👤 用户画像', `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><span style="color:var(--text-secondary);font-size:12px">孩子年级</span><div style="font-weight:600;margin-top:2px">${r.grade}</div></div>
+      <div><span style="color:var(--text-secondary);font-size:12px">学科关注</span><div style="font-weight:600;margin-top:2px">${r.subjects}</div></div>
+      <div><span style="color:var(--text-secondary);font-size:12px">家长性格</span><div style="font-weight:600;margin-top:2px">${r.parentType}</div></div>
+      <div><span style="color:var(--text-secondary);font-size:12px">决策角色</span><div style="font-weight:600;margin-top:2px">${r.decisionRole}</div></div>
+    </div>
+    <div style="margin-top:14px"><span style="color:var(--text-secondary);font-size:12px">核心痛点</span>
+      <div style="margin-top:4px">${r.painPoints.map(p => `<span class="tag tag-yellow">${p}</span>`).join('')}</div>
+    </div>
+    <div style="margin-top:14px"><span style="color:var(--text-secondary);font-size:12px">价格敏感度</span>
+      <div class="intent-bar-container">
+        <div class="intent-bar-track"><div class="intent-bar-fill" style="width:${r.priceSensitivity.pct}%;background:${r.priceSensitivity.pct > 60 ? 'var(--red)' : r.priceSensitivity.pct > 30 ? 'var(--yellow)' : 'var(--green)'}"></div></div>
+        <div class="intent-bar-label">${r.priceSensitivity.level}</div>
+      </div>
+    </div>
+  `, '从对话中推断的家长特征，未提及项标注"未提及"');
+
+  // 3. Intent Score
+  let signalsHtml = '';
+  if (r.intentSignals.signals.high.length) {
+    signalsHtml += '<div style="margin-top:10px"><span class="tag tag-green">高意向信号</span></div>';
+    r.intentSignals.signals.high.forEach(s => {
+      signalsHtml += `<div class="evidence"><span class="evidence-label">+2 ${s.label}</span>${s.quote ? '<br>' + escapeHtml(s.quote) : ''}</div>`;
+    });
+  }
+  if (r.intentSignals.signals.mid.length) {
+    signalsHtml += '<div style="margin-top:8px"><span class="tag tag-blue">中性信号</span></div>';
+    r.intentSignals.signals.mid.forEach(s => {
+      signalsHtml += `<div class="evidence"><span class="evidence-label">+1 ${s.label}</span>${s.quote ? '<br>' + escapeHtml(s.quote) : ''}</div>`;
+    });
+  }
+  if (r.intentSignals.signals.low.length) {
+    signalsHtml += '<div style="margin-top:8px"><span class="tag tag-red">低意向信号</span></div>';
+    r.intentSignals.signals.low.forEach(s => {
+      signalsHtml += `<div class="evidence"><span class="evidence-label">-1 ${s.label}</span>${s.quote ? '<br>' + escapeHtml(s.quote) : ''}</div>`;
+    });
+  }
+
+  html += card('🎯 转化意向度', `
+    <div class="score-gauge">
+      <div class="gauge-circle">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#E2E8F0" stroke-width="10"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="${intentColor}" stroke-width="10"
+            stroke-dasharray="${(r.intentScore/10)*327} 327" stroke-linecap="round"/>
+        </svg>
+        <div class="score-text">
+          <div class="score-num" style="color:${intentColor}" id="intentScoreNum">0</div>
+          <div class="score-label">/10分</div>
+        </div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:14px;font-weight:600;color:${intentColor}">${r.intentScore >= 7 ? '高意向' : r.intentScore >= 5 ? '中等意向' : '低意向'}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">基础分5分 + 信号分${r.intentSignals.score >= 0 ? '+' : ''}${r.intentSignals.score}</div>
+      </div>
+    </div>
+    ${signalsHtml}
+  `, '意向度评分1-10分，每条判断标注原文引用');
+
+  // 4. Key Info
+  html += card('📌 关键信息提取', `
+    <div style="margin-bottom:12px"><strong>学情信息</strong>
+      ${r.keyInfo.academic.map(k => `<div class="evidence">${escapeHtml(k)}</div>`).join('')}
+    </div>
+    <div style="margin-bottom:12px"><strong>时间节点</strong>
+      ${r.keyInfo.timeline.map(k => `<div class="evidence">${escapeHtml(k)}</div>`).join('')}
+    </div>
+    <div style="margin-bottom:12px"><strong>隐含需求</strong>
+      ${r.keyInfo.implicit.map(k => `<div class="evidence">${escapeHtml(k)}</div>`).join('')}
+    </div>
+    <div><strong>沟通约定</strong>
+      ${r.keyInfo.agreements.map(k => `<div class="evidence">${escapeHtml(k)}</div>`).join('')}
+    </div>
+  `, '从对话中抓取的关键信息，每条标注原文引用');
+
+  // 5. Emotion & Risk
+  html += card('⚠️ 情绪与风险识别', `
+    <div style="margin-bottom:12px"><strong>情绪判断</strong>
+      <div style="margin-top:4px"><span class="tag ${r.emotions.overall === '积极' ? 'tag-green' : r.emotions.overall === '消极/担忧' ? 'tag-red' : 'tag-yellow'}">${r.emotions.overall}</span></div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">文字维度：${r.emotions.textBased} | 音频维度：${r.emotions.audioBased}</div>
+    </div>
+    <div style="margin-bottom:12px"><strong>风险点</strong>
+      ${r.risks.map(risk => `<div class="evidence">${escapeHtml(risk)}</div>`).join('')}
+    </div>
+    <div><strong>合规检测</strong>
+      ${r.compliance.map(c => `<div class="evidence" style="border-left-color:${c.label === '无违规' ? 'var(--green)' : 'var(--red)'}"><span class="evidence-label">${c.label}</span><br>${escapeHtml(c.context)}</div>`).join('')}
+    </div>
+  `, '文字+音频双维度情绪判断，合规检测标红违规表述');
+
+  // 6. Follow-up
+  html += card('📅 跟进计划', `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="display:inline-block;padding:4px 12px;border-radius:4px;background:${r.followUp.color};color:#fff;font-size:13px;font-weight:600">${r.followUp.urgency}</span>
+      <span style="font-size:13px;color:var(--text-secondary)">${r.followUp.reason}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><span style="color:var(--text-secondary);font-size:12px">建议跟进时间</span><div style="font-weight:500;margin-top:2px">${r.followUp.time}</div></div>
+      <div><span style="color:var(--text-secondary);font-size:12px">建议跟进方式</span><div style="font-weight:500;margin-top:2px">${r.followUp.method}</div></div>
+    </div>
+  `, '跟进紧迫度和建议');
+
+  // 7. Scripts
+  html += card('💬 话术推荐', renderScripts(r.scripts), '基于本次对话生成的跟进话术，信息不足时标注"信息不足"');
+
+  $('reportContent').innerHTML = html;
+
+  // Animate score
+  animateScore('intentScoreNum', r.intentScore);
+}
+
+function renderReport2() {
+  const r = reportData.report2;
+  if (!r) { $('reportContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-text">请先分析后查看报告</div></div>'; return; }
+
+  const scoreColor = r.avgScore >= 7 ? 'var(--green)' : r.avgScore >= 5 ? 'var(--yellow)' : 'var(--red)';
+
+  let html = '';
+
+  // 1. Overall
+  html += card('📊 沟通质量总评', `
+    <div class="score-gauge">
+      <div class="gauge-circle">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#E2E8F0" stroke-width="10"/>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
+            stroke-dasharray="${(r.avgScore/10)*327} 327" stroke-linecap="round"/>
+        </svg>
+        <div class="score-text">
+          <div class="score-num" style="color:${scoreColor}" id="salesScoreNum">0</div>
+          <div class="score-label">/10分</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:${scoreColor}">${r.avgScore >= 7 ? '良好' : r.avgScore >= 5 ? '一般' : '需改进'}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">五维度综合评分</div>
+      </div>
+    </div>
+    <div class="radar-container">
+      ${renderRadarSVG([
+        { label: '需求挖掘', value: r.needDig.score },
+        { label: '产品匹配', value: r.productMatch.score },
+        { label: '异议处理', value: r.objectionHandling.score },
+        { label: '促单推进', value: r.closing.score },
+        { label: '沟通规范', value: r.compliance.score },
+      ])}
+    </div>
+  `, '综合评分基于需求挖掘、产品匹配、异议处理、促单推进、沟通规范五个维度');
+
+  // 2. Each dimension
+  const dims = [
+    { title: '🔍 需求挖掘能力', data: r.needDig },
+    { title: '🎯 产品匹配能力', data: r.productMatch },
+    { title: '🛡️ 异议处理能力', data: r.objectionHandling },
+    { title: '🚀 促单推进能力', data: r.closing },
+    { title: '✅ 沟通规范性', data: r.compliance },
+  ];
+
+  dims.forEach(d => {
+    html += card(d.title, `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="font-size:28px;font-weight:700;color:${d.data.score >= 7 ? 'var(--green)' : d.data.score >= 5 ? 'var(--yellow)' : 'var(--red)'}">${d.data.score}</span>
+        <span style="font-size:13px;color:var(--text-secondary)">/10分</span>
+      </div>
+      ${d.data.good.length ? `<div style="margin-bottom:8px"><span style="font-size:12px;font-weight:600;color:var(--green)">✅ 做得好</span>${d.data.good.map(g => `<div class="evidence" style="border-left-color:var(--green)">${escapeHtml(g)}</div>`).join('')}</div>` : ''}
+      ${d.data.bad.length ? `<div style="margin-bottom:8px"><span style="font-size:12px;font-weight:600;color:var(--red)">⚠️ 可改进</span>${d.data.bad.map(b => `<div class="evidence" style="border-left-color:var(--red)">${escapeHtml(b)}</div>`).join('')}</div>` : ''}
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:6px">💡 ${escapeHtml(d.data.suggest)}</div>
+    `, `${d.title.replace(/[^\u4e00-\u9fa5]/g,'')}维度评分和分析`);
+  });
+
+  // 3. Timeline
+  html += card('📅 对话时间线复盘', `
+    <div class="timeline">
+      ${r.timeline.map(t => `
+        <div class="timeline-item">
+          <div class="timeline-item-content">
+            <strong>${t.stage}</strong>
+            <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">${t.desc}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `, '对话各阶段分析');
+
+  // 4. Good phrases
+  html += card('⭐ 优秀话术提取', `
+    ${r.goodPhrases.map((p, i) => `
+      <div style="margin-bottom:${i < r.goodPhrases.length-1 ? '12px' : '0'}">
+        <div class="evidence">${escapeHtml(p.phrase)}</div>
+        <div style="font-size:12px;color:var(--green);margin-top:4px">💡 ${escapeHtml(p.reason)}</div>
+      </div>
+    `).join('')}
+  `, '从本次对话中提取的优秀话术');
+
+  // 5. Improvements
+  html += card('📝 改进行动清单', `
+    ${r.improvements.map((imp, i) => `
+      <div style="padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:8px">
+        <div style="font-weight:600;font-size:14px"><span style="color:var(--primary)">P${i+1}</span> ${escapeHtml(imp.title)}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">${escapeHtml(imp.desc)}</div>
+        ${imp.example ? `<div style="font-size:12px;margin-top:6px;padding:6px 10px;background:var(--card);border-radius:4px;border:1px solid var(--border)">💬 ${escapeHtml(imp.example)}</div>` : ''}
+      </div>
+    `).join('')}
+  `, '按优先级排序的改进建议');
+
+  $('reportContent').innerHTML = html;
+  animateScore('salesScoreNum', r.avgScore);
+}
+
+function card(title, body, helpText) {
+  return `<div class="card report-card">
+    <div class="card-header">
+      <div class="card-header-left">${title}</div>
+      <div style="position:relative">
+        <span class="help-icon" onclick="toggleHelp(this)" data-help="${escapeHtml(helpText || '')}">?</span>
+        <div class="help-tooltip">${helpText || ''}</div>
+      </div>
+    </div>
+    <div class="card-body">${body}</div>
+  </div>`;
+}
+
+function renderScripts(scripts) {
+  const sections = [
+    { key: 'opening', title: '开场白', data: scripts.opening },
+    { key: 'painDeep', title: '痛点深化', data: scripts.painDeep },
+    { key: 'productMatch', title: '产品匹配', data: scripts.productMatch },
+    { key: 'objection', title: '异议预案', data: scripts.objection },
+    { key: 'closing', title: '促单动作', data: scripts.closing },
+  ];
+  return sections.map(s => {
+    const content = Array.isArray(s.data) ? s.data : [s.data];
+    return `<div class="accordion-item">
+      <div class="accordion-header" onclick="toggleAccordion(this)">
+        <span>${s.title}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="copy-btn" onclick="event.stopPropagation();copyScript(this)">一键复制</button>
+          <span class="arrow">▼</span>
+        </div>
+      </div>
+      <div class="accordion-body" data-copy="${escapeHtml(content.join('\n'))}">
+        <div class="accordion-content">${content.map(c => `<div style="margin-bottom:6px">• ${escapeHtml(c)}</div>`).join('')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRadarSVG(dims) {
+  const cx = 140, cy = 140, r = 100;
+  const n = dims.length;
+  const angleStep = (Math.PI * 2) / n;
+
+  function getPoint(idx, val) {
+    const angle = -Math.PI / 2 + idx * angleStep;
+    const dist = (val / 10) * r;
+    return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist };
+  }
+  function getOuter(idx) {
+    return getPoint(idx, 10);
+  }
+
+  let gridLines = '';
+  for (let level = 2; level <= 10; level += 2) {
+    let pts = [];
+    for (let i = 0; i < n; i++) {
+      const p = getPoint(i, level);
+      pts.push(`${p.x},${p.y}`);
+    }
+    gridLines += `<polygon points="${pts.join(' ')}" fill="none" stroke="#E2E8F0" stroke-width="1"/>`;
+  }
+  for (let i = 0; i < n; i++) {
+    const p = getOuter(i);
+    gridLines += `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="#E2E8F0" stroke-width="1"/>`;
+  }
+
+  let dataPts = [];
+  for (let i = 0; i < n; i++) {
+    const p = getPoint(i, dims[i].value);
+    dataPts.push(`${p.x},${p.y}`);
+  }
+
+  let labels = '';
+  for (let i = 0; i < n; i++) {
+    const p = getOuter(i);
+    const lx = cx + (p.x - cx) * 1.2;
+    const ly = cy + (p.y - cy) * 1.2;
+    labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#0F172A" font-weight="500">${dims[i].label} ${dims[i].value}</text>`;
+  }
+
+  return `<svg width="280" height="280" viewBox="0 0 280 280">
+    ${gridLines}
+    <polygon points="${dataPts.join(' ')}" fill="rgba(79,70,229,0.15)" stroke="#4F46E5" stroke-width="2"/>
+    ${dims.map((d, i) => { const p = getPoint(i, d.value); return `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#4F46E5"/>`; }).join('')}
+    ${labels}
+  </svg>`;
+}
+
+function animateScore(id, target) {
+  const el = $(id);
+  if (!el) return;
+  let current = 0;
+  const step = target / 30;
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) { current = target; clearInterval(timer); }
+    el.textContent = Math.round(current);
+  }, 33);
+}
+
+function toggleHelp(el) {
+  const tooltip = el.nextElementSibling;
+  tooltip.classList.toggle('show');
+  setTimeout(() => tooltip.classList.remove('show'), 5000);
+}
+
+function toggleAccordion(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+function copyScript(btn) {
+  const accordion = btn.closest('.accordion-item');
+  const body = accordion.querySelector('.accordion-body');
+  const text = body.dataset.copy;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '一键复制'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ===== Actions =====
+function clearAll() {
+  showConfirm('确认清空所有输入内容？', () => {
+    uploadedTextFiles = [];
+    uploadedAudioFile = null;
+    audioBuffer = null;
+    $('textFileList').innerHTML = '';
+    $('audioFileList').innerHTML = '';
+    $('textContent').value = '';
+    $('pasteContent').value = '';
+    $('audioTextContent').value = '';
+    $('textPreviewSection').style.display = 'none';
+    $('audioSection').style.display = 'none';
+    $('audioTextPreview').style.display = 'none';
+    $('audioFeatureSection').style.display = 'none';
+  });
+}
+
+function clearCurrentReport() {
+  showConfirm('确认清空当前报告？已上传的文件和输入内容不会被清除', () => {
+    reportData = { report1: null, report2: null };
+    $('reportContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">请先上传内容并点击"开始分析"</div></div>';
+  });
+}
+
+function exportReport() {
+  if (!reportData.report1 && !reportData.report2) {
+    showNotification('请先进行分析');
+    return;
+  }
+  // Show both tabs before printing
+  currentTab = 0;
+  renderReport();
+  setTimeout(() => window.print(), 200);
+}
+
+// ===== Save / History =====
+function saveAnalysis() {
+  if (!reportData.report1 && !reportData.report2) {
+    showNotification('请先进行分析');
+    return;
+  }
+  $('saveModal').classList.add('show');
+  $('saveLabel').value = '';
+  $('saveLabel').focus();
+}
+
+function closeSaveModal() { $('saveModal').classList.remove('show'); }
+
+function confirmSave() {
+  const label = $('saveLabel').value.trim() || '未命名分析';
+  const records = JSON.parse(localStorage.getItem('commAnalysisHistory') || '[]');
+  const text = getFullText();
+  records.unshift({
+    id: Date.now(),
+    label,
+    date: new Date().toLocaleString('zh-CN'),
+    summary: text.substring(0, 30) + '...',
+    intentScore: reportData.report1 ? reportData.report1.intentScore : '-',
+    report1: reportData.report1,
+    report2: reportData.report2,
+    text: text
+  });
+  if (records.length > 20) records.length = 20;
+  localStorage.setItem('commAnalysisHistory', JSON.stringify(records));
+  closeSaveModal();
+  showNotification('分析已保存');
+}
+
+function openHistory() {
+  renderHistoryList();
+  $('drawerOverlay').classList.add('show');
+  $('historyDrawer').classList.add('show');
+}
+
+function closeHistory() {
+  $('drawerOverlay').classList.remove('show');
+  $('historyDrawer').classList.remove('show');
+}
+
+function renderHistoryList() {
+  const records = JSON.parse(localStorage.getItem('commAnalysisHistory') || '[]');
+  if (!records.length) {
+    $('historyList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">暂无历史记录，完成一次分析后可保存到这里</div></div>';
+    return;
+  }
+  $('historyList').innerHTML = records.map(r => {
+    const scoreColor = r.intentScore >= 7 ? 'var(--green)' : r.intentScore >= 5 ? 'var(--yellow)' : 'var(--red)';
+    return `<div class="history-item" onclick="viewHistory(${r.id})">
+      <div class="history-item-header">
+        <div class="history-item-label">${escapeHtml(r.label)}</div>
+        <button class="btn-icon" onclick="event.stopPropagation();deleteHistory(${r.id})" title="删除">🗑️</button>
+      </div>
+      <div class="history-item-date">${r.date}</div>
+      <div class="history-item-summary">${escapeHtml(r.summary)}</div>
+      <div class="history-item-score"><span class="tag" style="background:${scoreColor};color:#fff">意向度 ${r.intentScore}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function viewHistory(id) {
+  const records = JSON.parse(localStorage.getItem('commAnalysisHistory') || '[]');
+  const record = records.find(r => r.id === id);
+  if (!record) return;
+
+  $('historyDetailTitle').textContent = record.label;
+  let html = `<div style="margin-bottom:12px"><span style="color:var(--text-secondary);font-size:13px">${record.date} · 意向度 ${record.intentScore}/10</span></div>`;
+
+  if (record.report1) {
+    html += '<h3 style="margin:16px 0 8px;font-size:15px">📊 用户学情分析</h3>';
+    const r = record.report1;
+    html += `<div style="padding:10px;background:var(--bg);border-radius:6px;margin-bottom:8px;font-size:13px;line-height:1.8">
+      <div>年级：${r.grade} | 学科：${r.subjects} | 性格：${r.parentType}</div>
+      <div>痛点：${r.painPoints.join('、')} | 意向度：${r.intentScore}/10</div>
+      <div>跟进：${r.followUp.urgency} - ${r.followUp.method} - ${r.followUp.time}</div>
+    </div>`;
+  }
+  if (record.report2) {
+    html += '<h3 style="margin:16px 0 8px;font-size:15px">🎯 销售能力分析</h3>';
+    const r = record.report2;
+    html += `<div style="padding:10px;background:var(--bg);border-radius:6px;margin-bottom:8px;font-size:13px;line-height:1.8">
+      <div>综合评分：${r.avgScore}/10</div>
+      <div>需求挖掘 ${r.needDig.score} | 产品匹配 ${r.productMatch.score} | 异议处理 ${r.objectionHandling.score} | 促单 ${r.closing.score} | 规范 ${r.compliance.score}</div>
+    </div>`;
+  }
+
+  $('historyDetailBody').innerHTML = html;
+  $('historyDetailModal').classList.add('show');
+  closeHistory();
+}
+
+function closeHistoryDetail() { $('historyDetailModal').classList.remove('show'); }
+
+function deleteHistory(id) {
+  showConfirm('确认删除该条记录？删除后不可恢复', () => {
+    let records = JSON.parse(localStorage.getItem('commAnalysisHistory') || '[]');
+    records = records.filter(r => r.id !== id);
+    localStorage.setItem('commAnalysisHistory', JSON.stringify(records));
+    renderHistoryList();
+  });
+}
+
+function clearAllHistory() {
+  const records = JSON.parse(localStorage.getItem('commAnalysisHistory') || '[]');
+  if (!records.length) return;
+  showConfirm(`确认清空全部历史记录？共${records.length}条记录将被删除，此操作不可恢复`, () => {
+    localStorage.setItem('commAnalysisHistory', '[]');
+    renderHistoryList();
+  });
+}
+
+// ===== Confirm Modal =====
+function showConfirm(msg, callback) {
+  $('confirmBody').textContent = msg;
+  confirmCallback = callback;
+  $('confirmModal').classList.add('show');
+}
+function closeConfirm() { $('confirmModal').classList.remove('show'); confirmCallback = null; }
+function confirmAction() { if (confirmCallback) confirmCallback(); closeConfirm(); }
+
+// ===== Sample Data =====
+function toggleSampleMenu() {
+  $('sampleMenu').classList.toggle('show');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.sample-dropdown')) $('sampleMenu').classList.remove('show');
+});
+
+const sampleData = {
+  1: `销售：您好王妈妈，我是XX教育的课程顾问小李，之前您咨询过我们四年级数学课程，今天方便聊几句吗？
+家长：哦好的，小李老师你好。确实想了解一下。
+销售：好的王妈妈，孩子现在是四年级对吧？数学目前是什么情况呢？
+家长：对，四年级。数学成绩一直不太好，上次期中考试才70多分，班里平均都80多。
+销售：明白，70多分确实需要关注。请问孩子是哪个方面比较薄弱呢？计算还是应用题？
+家长：主要是应用题，看到题目就发懵，不知道从哪里下手。
+销售：了解了。那孩子平时做作业习惯怎么样？您有陪着做吗？
+家长：做作业特别磨蹭，经常做到晚上10点11点，我在旁边陪着还好点，不陪着更慢。
+销售：好的，磨蹭这个问题其实很多孩子都有，和思维方式有关系。我们这个课程正好针对应用题理解有专门的训练方法。王妈妈方便了解一下课程安排吗？
+家长：怎么安排的？多少钱？
+销售：我们一周两次课，每次一个半小时。价格的话，一个学期是6800元，包含教材和练习册。现在报名的话有早鸟优惠，可以减800。
+家长：6800...还是有点贵。我再考虑考虑吧。
+销售：理解您的顾虑，王妈妈。这样吧，我先帮您约一节免费的试听课，让孩子体验一下，感受一下我们的教学方法。如果孩子喜欢、觉得有帮助，再决定也不迟。您看这周六方便吗？
+家长：周六...我看看...行吧，可以试试。
+销售：好的，那我帮您约在周六上午10点，您带孩子过来就行。到时候我也在，有什么问题可以当面聊。
+家长：好的，那周六见。
+销售：好的王妈妈，周六见。我稍后把地址和注意事项发您企微。`,
+  2: `销售：您好，请问是张同学的家长吗？我是XX教育的王老师。
+家长：嗯是的。
+销售：张妈妈您好，看到您之前给孩子咨询过英语课程，想跟您聊聊孩子的情况。
+家长：哦，就是随便看看。
+销售：好的，孩子现在几年级了？
+家长：初一。
+销售：初一英语挺关键的。孩子目前英语成绩怎么样？
+家长：还行吧，中等。
+销售：有具体分数吗？
+家长：不太记得了，好像70多吧。
+销售：70多分的话，在初中阶段其实还有不少提升空间。孩子平时英语学习有什么困难吗？比如阅读、听力还是语法？
+家长：没特别注意，就那样吧。
+销售：好的了解。我们初一英语课程主要是...（介绍课程内容）
+家长：哦好的。
+销售：现在报名有优惠，一学期4800。您看要不要先试听一节课？
+家长：再说吧，最近比较忙。
+销售：好的，那我把课程资料发您企微，您有空看看。
+家长：嗯。`,
+  3: `销售：李妈妈您好！我是XX教育金牌顾问小张，我们是全国排名第一的教育机构！
+家长：你好。
+销售：孩子是三年级对吧？我们保证一个学期提高20分，达不到全额退费！
+家长：真的吗？能保证提分？
+销售：当然！我们是行业内最好的机构，保证效果！您就放心报名吧。
+家长：那多少钱？
+销售：现在报名最划算，原价9800，今天报名只要5800，而且随时可以退，不满意全额退款！
+家长：这么便宜？我再想想。
+销售：李妈妈，这个价格只有今天有，过了今天就恢复原价了。您现在就定吧，别犹豫了！
+家长：我得和老公商量一下。
+销售：这种事您做主就行了！孩子学习不能等啊，再拖下去成绩只会越来越差！
+家长：那...好吧，我先报一期试试。
+销售：太好了！我帮您登记，保证您孩子的成绩！`
+};
+
+function loadSample(n) {
+  $('sampleMenu').classList.remove('show');
+  $('textContent').value = sampleData[n];
+  $('textPreviewSection').style.display = 'block';
+  uploadedTextFiles = [{ name: `示例${n}.txt`, size: sampleData[n].length, ext: 'txt', text: sampleData[n] }];
+  showNotification(`已加载示例${n}`);
+}
+
+// Init
+</script>
+</body>
+</html>
