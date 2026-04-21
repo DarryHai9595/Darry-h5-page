@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>直播间</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ===== 视频背景 ===== */
+    #videoWrap {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      z-index: 0;
+    }
+    #videoWrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* 如果没有视频，用渐变背景兜底 */
+    .video-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .video-placeholder .play-icon {
+      width: 72px;
+      height: 72px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .video-placeholder .play-icon svg { margin-left: 4px; }
+    .video-placeholder p { color: rgba(255,255,255,0.5); font-size: 13px; }
+
+    /* ===== 全局遮罩层（渐变，增强可读性） ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 20%),
+        linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ===== 顶部栏 ===== */
+    .top-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 14px 16px 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .host-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 24px;
+      padding: 4px 12px 4px 4px;
+      flex: 1;
+      min-width: 0;
+    }
+    .host-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      border: 2px solid #fff;
+    }
+    .host-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .host-sub { font-size: 11px; color: rgba(255,255,255,0.6); }
+
+    .follow-btn {
+      background: linear-gradient(90deg, #ff6b6b, #ff4757);
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .follow-btn.followed {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* 直播标签 */
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,68,68,0.85);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* 观看人数 */
+    .viewer-count {
+      background: rgba(0,0,0,0.4);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.85);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    /* 关闭按钮 */
+    .close-btn {
+      width: 32px; height: 32px;
+      background: rgba(0,0,0,0.4);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ===== 弹幕区 ===== */
+    .danmu-area {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: 280px;
+      height: 200px;
+      z-index: 10;
+      padding: 0 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .danmu-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 20px;
+      padding: 5px 10px;
+      max-width: 80%;
+      width: fit-content;
+      animation: fadeInUp 0.3s ease;
+    }
+    .danmu-avatar {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .danmu-name {
+      font-size: 11px;
+      color: #ffd700;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .danmu-text { font-size: 12px; line-height: 1.4; }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== 底部区域 ===== */
+    .bottom-area {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 10;
+      padding: 0 12px 24px;
+    }
+
+    /* 商品卡片 */
+    .product-card {
+      background: rgba(20,20,20,0.85);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+    .product-card:active { opacity: 0.8; }
+    .product-img {
+      width: 50px; height: 50px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .product-info { flex: 1; min-width: 0; }
+    .product-tag {
+      font-size: 10px;
+      background: #ff4757;
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-bottom: 3px;
+      display: inline-block;
+    }
+    .product-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .product-price { font-size: 12px; color: #ff6b6b; margin-top: 2px; }
+    .product-price s { color: rgba(255,255,255,0.4); margin-left: 4px; font-size: 11px; }
+    .buy-btn {
+      background: linear-gradient(90deg, #ff6b6b, #ff4757);
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* 底部操作栏 */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .input-box {
+      flex: 1;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 20px;
+      padding: 9px 16px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+    }
+    .input-box::placeholder { color: rgba(255,255,255,0.5); }
+    .action-btns {
+      display: flex;
+      gap: 10px;
+    }
+    .action-btn {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      position: relative;
+      transition: transform 0.15s;
+    }
+    .action-btn:active { transform: scale(0.9); }
+
+    /* 点赞数 */
+    .like-count {
+      position: absolute;
+      top: -4px; right: -4px;
+      background: #ff4757;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 8px;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    /* ===== 飘心动画 ===== */
+    .hearts-container {
+      position: fixed;
+      right: 16px;
+      bottom: 120px;
+      z-index: 20;
+      pointer-events: none;
+      width: 40px;
+    }
+    .heart-float {
+      position: absolute;
+      bottom: 0;
+      font-size: 22px;
+      animation: floatHeart 1.8s ease-out forwards;
+    }
+    @keyframes floatHeart {
+      0%   { opacity: 1; transform: translateY(0) scale(0.8) rotate(-10deg); }
+      50%  { opacity: 0.9; transform: translateY(-80px) scale(1.1) rotate(10deg); }
+      100% { opacity: 0; transform: translateY(-160px) scale(0.6) rotate(-5deg); }
+    }
+
+    /* ===== 右侧功能按钮 ===== */
+    .side-btns {
+      position: fixed;
+      right: 14px;
+      bottom: 270px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+    }
+    .side-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+    }
+    .side-btn-icon {
+      width: 42px; height: 42px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .side-btn-label { font-size: 10px; color: rgba(255,255,255,0.7); }
+
+    /* ===== 进场提示 ===== */
+    .enter-tips {
+      position: fixed;
+      top: 80px;
+      left: 0; right: 0;
+      z-index: 10;
+      padding: 0 12px;
+      pointer-events: none;
+    }
+    .enter-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+      animation: fadeInOut 3s ease forwards;
+    }
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateX(-10px); }
+      15%  { opacity: 1; transform: translateX(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ===== Toast 提示 ===== */
+    .toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ===== 商品弹窗 ===== */
+    .product-popup {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .product-popup.show { display: flex; }
+    .popup-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+    .popup-sheet {
+      position: relative;
+      background: #1a1a1a;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 16px 40px;
+      z-index: 1;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .popup-handle {
+      width: 36px; height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .popup-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .popup-product {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .popup-img {
+      width: 80px; height: 80px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+    .popup-info { flex: 1; }
+    .popup-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .popup-info p { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+    .popup-price {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ff4757;
+      margin-bottom: 4px;
+    }
+    .popup-price span { font-size: 14px; font-weight: 400; color: rgba(255,255,255,0.4); text-decoration: line-through; margin-left: 8px; }
+    .popup-buy-btn {
+      width: 100%;
+      background: linear-gradient(90deg, #ff6b6b, #ff4757);
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px;
+      border-radius: 28px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 视频区 -->
+<div id="videoWrap">
+  <!-- 替换 src 为你的视频地址；如果没有视频则显示占位 -->
+  <video id="liveVideo" autoplay muted loop playsinline
+    src=""
+    onerror="this.style.display='none';document.getElementById('placeholder').style.display='flex'">
+  </video>
+  <div class="video-placeholder" id="placeholder" style="display:none;">
+    <div class="play-icon" onclick="handlePlay()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <p>点击开始观看直播</p>
+  </div>
+</div>
+
+<!-- 渐变遮罩 -->
+<div class="overlay"></div>
+
+<!-- 点击解除静音提示 -->
+<div id="unmuteToast" onclick="unmuteVideo()" style="
+  position:fixed; bottom:200px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.65); color:#fff;
+  padding:10px 20px; border-radius:24px;
+  font-size:13px; z-index:50; cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+  backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.15);
+  animation: breathe 2s ease-in-out infinite;
+">
+  🔇 <span>点击开启声音</span>
+</div>
+<style>
+@keyframes breathe {
+  0%,100% { opacity:0.85; transform:translateX(-50%) scale(1); }
+  50%      { opacity:1;    transform:translateX(-50%) scale(1.04); }
+}
+</style>
+
+<!-- 顶部栏 -->
+<div class="top-bar">
+  <div class="host-info">
+    <div class="host-avatar">🎤</div>
+    <div>
+      <div class="host-name" id="hostName">品牌官方直播间</div>
+      <div class="host-sub" id="hostSub">正在直播</div>
+    </div>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div>直播</div>
+  <div class="viewer-count">👁 <span id="viewerNum">1.2万</span></div>
+  <button class="close-btn" onclick="handleClose()">✕</button>
+</div>
+
+<!-- 进场提示区 -->
+<div class="enter-tips" id="enterTips"></div>
+
+<!-- 弹幕 / 评论区 -->
+<div class="danmu-area" id="danmuArea"></div>
+
+<!-- 右侧功能按钮 -->
+<div class="side-btns">
+  <div class="side-btn" onclick="handleShare()">
+    <div class="side-btn-icon">🔗</div>
+    <div class="side-btn-label">分享</div>
+  </div>
+  <div class="side-btn" onclick="openProduct()">
+    <div class="side-btn-icon">🛍️</div>
+    <div class="side-btn-label">商品</div>
+  </div>
+</div>
+
+<!-- 飘心容器 -->
+<div class="hearts-container" id="heartsContainer"></div>
+
+<!-- 底部区域 -->
+<div class="bottom-area">
+  <!-- 商品卡片 -->
+  <div class="product-card" id="productCard" onclick="openProduct()">
+    <div class="product-img">🎁</div>
+    <div class="product-info">
+      <div class="product-tag">直播专属</div>
+      <div class="product-name" id="productName">限时特惠套餐</div>
+      <div class="product-price">
+        ¥<span id="productPrice">199</span>
+        <s>¥<span id="productOriPrice">399</span></s>
+      </div>
+    </div>
+    <button class="buy-btn">抢购</button>
+  </div>
+
+  <!-- 操作栏 -->
+  <div class="action-bar">
+    <input class="input-box" id="inputBox" type="text" placeholder="和大家聊聊吧~" />
+    <div class="action-btns">
+      <button class="action-btn" onclick="sendComment()">💬</button>
+      <button class="action-btn" id="likeBtn" onclick="handleLike()">
+        ❤️
+        <span class="like-count" id="likeCount">0</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 商品弹窗 -->
+<div class="product-popup" id="productPopup">
+  <div class="popup-mask" onclick="closeProduct()"></div>
+  <div class="popup-sheet">
+    <div class="popup-handle"></div>
+    <div class="popup-title">📦 商品详情</div>
+    <div class="popup-product">
+      <div class="popup-img">🎁</div>
+      <div class="popup-info">
+        <h3 id="popupProductName">限时特惠套餐</h3>
+        <p id="popupProductDesc">直播间专属限时折扣，仅限今天！内含多重权益，先到先得。</p>
+      </div>
+    </div>
+    <div class="popup-price">¥<span id="popupPrice">199</span><span>¥<span id="popupOriPrice">399</span></span></div>
+    <button class="popup-buy-btn" onclick="handleBuy()">立即抢购</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 配置区（业务方修改此处即可） =====
+const CONFIG = {
+  hostName:       '希望优课直播间',
+  hostEmoji:      '🎤',
+  videoSrc:       'https://static-gz-xiwang-inc.wen-su.com/xueersifile/editor-resource/8A6hKXjmPOA-S8x6RnzJ9-1772432214462.mp4',
+  productName:    '期中7天特训营',
+  productDesc:    '直播间专属限时折扣，仅限今天！内含多重权益，先到先得。',
+  productPrice:   '0',
+  productOriPrice:'199',
+  baseViewers:    10000,          // 初始观看人数
+  closeUrl:       'https://ac.wen-su.com/market/#/index?pagekey=B-25-0-Sub-HMmBkC',
+};
+// ===== 配置区结束 =====
+
+// 解除静音
+function unmuteVideo() {
+  const v = document.getElementById('liveVideo');
+  v.muted = false;
+  v.play();
+  const el = document.getElementById('unmuteToast');
+  el.innerHTML = '🔊 <span>声音已开启</span>';
+  setTimeout(() => el.style.display = 'none', 1500);
+}
+
+// 初始化视频
+const video = document.getElementById('liveVideo');
+if (CONFIG.videoSrc) {
+  video.src = CONFIG.videoSrc;
+  document.getElementById('placeholder').style.display = 'none';
+  video.style.display = 'block';
+} else {
+  video.style.display = 'none';
+  document.getElementById('placeholder').style.display = 'flex';
+}
+
+// 初始化文案
+document.getElementById('hostName').textContent = CONFIG.hostName;
+document.getElementById('productName').textContent = CONFIG.productName;
+document.getElementById('productPrice').textContent = CONFIG.productPrice;
+document.getElementById('productOriPrice').textContent = CONFIG.productOriPrice;
+document.getElementById('popupProductName').textContent = CONFIG.productName;
+document.getElementById('popupProductDesc').textContent = CONFIG.productDesc;
+document.getElementById('popupPrice').textContent = CONFIG.productPrice;
+document.getElementById('popupOriPrice').textContent = CONFIG.productOriPrice;
+
+// ===== 观看人数波动 =====
+let viewers = CONFIG.baseViewers;
+function updateViewers() {
+  viewers += Math.floor(Math.random() * 20) - 5;
+  if (viewers < 100) viewers = 100;
+  const el = document.getElementById('viewerNum');
+  el.textContent = viewers >= 10000
+    ? (viewers / 10000).toFixed(1) + '万'
+    : viewers.toString();
+}
+setInterval(updateViewers, 4000);
+
+// ===== 弹幕系统 =====
+const danmuData = [
+  { name: '小美🌸', text: '主播讲得太好了！' },
+  { name: '阿强', text: '这个价格真的值👍' },
+  { name: '晴天', text: '已经下单啦～' },
+  { name: '冬冬🎵', text: '还有库存吗？' },
+  { name: '橙子', text: '第一次来，感觉超棒！' },
+  { name: '小鱼🐟', text: '比昨天便宜了好多' },
+  { name: '阿梅', text: '主播加油！' },
+  { name: '明明', text: '求链接！' },
+  { name: '梅子', text: '666666' },
+  { name: '蓝天', text: '粉了粉了😍' },
+  { name: '路过的风', text: '感觉品质不错' },
+  { name: '猫咪🐱', text: '直播间最良心！' },
+  { name: 'Leon', text: '帮朋友问，可以发货吗？' },
+  { name: '小橙', text: '买了！期待收货💕' },
+];
+const avatarColors = ['#ff6b6b','#ffa36b','#ffd93d','#6bcb77','#4d96ff','#a855f7','#f43f5e'];
+const maxDanmu = 5;
+
+function addDanmu(name, text, color) {
+  const area = document.getElementById('danmuArea');
+  const item = document.createElement('div');
+  item.className = 'danmu-item';
+  const avatarBg = color || avatarColors[Math.floor(Math.random() * avatarColors.length)];
+  item.innerHTML = `
+    <div class="danmu-avatar" style="background:${avatarBg}">${name[0]}</div>
+    <span class="danmu-name">${name}</span>
+    <span class="danmu-text">${text}</span>
+  `;
+  area.appendChild(item);
+  // 超出上限删除最旧的
+  while (area.children.length > maxDanmu) area.removeChild(area.firstChild);
+  // 3.5秒后淡出
+  setTimeout(() => item.remove(), 3500);
+}
+
+function randomDanmu() {
+  const d = danmuData[Math.floor(Math.random() * danmuData.length)];
+  addDanmu(d.name, d.text);
+}
+setInterval(randomDanmu, 2200);
+randomDanmu();
+
+// ===== 进场提示 =====
+const enterNames = ['用户****23','用户****78','用户****01','用户****56','用户****99'];
+function showEnter() {
+  const name = enterNames[Math.floor(Math.random() * enterNames.length)];
+  const area = document.getElementById('enterTips');
+  const el = document.createElement('div');
+  el.className = 'enter-item';
+  el.innerHTML = `👋 <b>${name}</b> 进入直播间`;
+  area.appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+setInterval(showEnter, 5000);
+setTimeout(showEnter, 1000);
+
+// ===== 点赞 =====
+let likes = 0;
+function handleLike() {
+  likes++;
+  document.getElementById('likeCount').textContent = likes > 99 ? '99+' : likes;
+  spawnHeart();
+}
+
+const heartEmojis = ['❤️','🧡','💛','💚','💜','💗','🌸'];
+function spawnHeart() {
+  const container = document.getElementById('heartsContainer');
+  const heart = document.createElement('div');
+  heart.className = 'heart-float';
+  heart.textContent = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+  heart.style.left = Math.random() * 20 + 'px';
+  container.appendChild(heart);
+  setTimeout(() => heart.remove(), 1900);
+}
+// 自动飘心（模拟其他人点赞）
+setInterval(() => { if (Math.random() > 0.6) spawnHeart(); }, 1800);
+
+// ===== 发评论 =====
+function sendComment() {
+  const input = document.getElementById('inputBox');
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  addDanmu('我', text, '#4d96ff');
+  input.value = '';
+}
+document.getElementById('inputBox').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendComment();
+});
+
+// ===== 商品弹窗 =====
+function openProduct() {
+  document.getElementById('productPopup').classList.add('show');
+}
+function closeProduct() {
+  document.getElementById('productPopup').classList.remove('show');
+}
+function handleBuy() {
+  closeProduct();
+  showToast('🎉 已跳转支付页面');
+  window.location.href = 'https://ac.wen-su.com/market/#/index?pagekey=B-25-0-Sub-HMmBkC';
+}
+
+// ===== 关闭直播间 =====
+function handleClose() {
+  if (CONFIG.closeUrl) {
+    window.location.href = CONFIG.closeUrl;
+  } else if (history.length > 1) {
+    history.back();
+  } else {
+    showToast('已退出直播间');
+  }
+}
+
+// ===== 分享 =====
+function handleShare() {
+  if (navigator.share) {
+    navigator.share({ title: CONFIG.hostName, url: location.href }).catch(() => {});
+  } else {
+    showToast('链接已复制到剪贴板');
+    if (navigator.clipboard) navigator.clipboard.writeText(location.href).catch(() => {});
+  }
+}
+
+// ===== 占位播放 =====
+function handlePlay() {
+  showToast('🎬 视频地址未配置，请在 CONFIG.videoSrc 填入视频地址');
+}
+
+// ===== Toast =====
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
